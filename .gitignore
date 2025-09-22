@@ -1,0 +1,21 @@
+# Python bytecode and temp files
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Editor swap or backup files
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Mac/Linux hidden files
+.DS_Store
+*.~*
+
+# Non-ASCII temp files (like your example)
+*[^ -~]*.png

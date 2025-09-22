@@ -71,7 +71,7 @@ def calculate_font_offset(font, sample_char, square_size, font_name):
     
     # 篆体通常需要向下偏移
     if "篆" in font_name or "印" in font_name:
-        return square_size // 5  # 篆体向下偏移20%
+        return square_size // 4  # 篆体向下偏移25%
     else:
         return 0
 
