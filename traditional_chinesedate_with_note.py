@@ -1,19 +1,34 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 from datetime import datetime
 from zhdate import ZhDate
+import random
 
 from Calli_Utils import (
     add_circular_seal_with_rotation,
     add_circular_seal_visual_debug,
-    add_four_character_seal
+    add_four_character_seal,
+    add_xuan_paper_texture,
+    add_ink_bleed_effect
 )
 
 def create_correct_vertical_poem():
     """修正后的竖排书法：正确尺寸 + 农历日期 + 传统落款顺序"""
     
     # 正确尺寸：高 > 宽（立轴式）
-    image = Image.new('RGB', (1400, 700), (245, 235, 215))  # 宽700, 高1400
+    # image = Image.new('RGB', (1400, 700), (245, 235, 215))  # 宽700, 高1400
+    # create an image and defer color decisions
+    width, height = 1400, 700
+    image = Image.new('RGB', (width, height), (245, 235, 215))
+    
+    # 使用宣纸
+    texture_intensity=0.85
+    image = add_xuan_paper_texture(image, texture_intensity, False)
+
+    image.save("debug_xuan_image.png")
+
     draw = ImageDraw.Draw(image)
+
+    
     
     # 加载字体
     try:
@@ -95,9 +110,17 @@ def create_correct_vertical_poem():
     note_x = seal_x + note_diameter // 2    # 圆形的半径
     note_y = date_end_y - note_diameter // 2    # 圆形的半径
     image = add_circular_seal_with_rotation(image, note_text, (note_x, note_y), note_diameter, note_center_ratio, note_char_rotation_degree)
+
     
     
-    image.save("传统竖排书法.png", quality=95)
+    # 增加墨迹渗透效果
+    bleed_intensity=0.15
+    image = add_ink_bleed_effect(image, bleed_intensity)
+
+    
+
+    
+    image.save("传统竖排书法_宣纸_测试.png", quality=95)
     print("生成完成：传统竖排书法.png")
     print("包含：正确尺寸 + 农历日期 + 传统落款顺序")
     
