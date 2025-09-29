@@ -1,5 +1,7 @@
 from PIL import Image, ImageDraw, ImageFilter
 import random
+import math
+import numpy as np
 
 def add_ink_bleed_effect(image, intensity=0.3):
     """添加墨迹渗透效果（宣纸特有），使用透明叠加模拟墨迹扩散"""
@@ -112,4 +114,49 @@ def add_ink_bleed_effect(image, intensity=0.3):
                 result.putpixel((x, y), new_color)
     
     
+    return result
+
+def add_ink_bleed_effect_enhanced(image, intensity=1.0):
+    """非常明显的图像处理效果"""
+    width, height = image.size
+    result = image.copy()
+    
+    print("应用明显的图像处理效果...")
+    
+    # 转换为numpy数组进行高效处理
+    img_array = np.array(result)
+    
+    # 找到深色像素（文字）
+    dark_pixels = np.where(np.mean(img_array, axis=2) < 100)
+    
+    if len(dark_pixels[0]) == 0:
+        print("警告：未检测到深色文字区域")
+        return result
+    
+    # 创建明显的渗透效果
+    for i in range(len(dark_pixels[0])):
+        x, y = dark_pixels[1][i], dark_pixels[0][i]
+        
+        # 在文字周围创建明显的灰色晕染
+        for dx in range(-6, 7):
+            for dy in range(-6, 7):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < width and 0 <= ny < height:
+                    distance = math.sqrt(dx*dx + dy*dy)
+                    if distance <= 6:  # 圆形渗透区域
+                        # 只处理亮背景区域
+                        if np.mean(img_array[ny, nx]) > 200:
+                            # 明显的变暗效果
+                            darken_amount = int(80 * (1 - distance/6) * intensity)
+                            img_array[ny, nx] = np.clip(img_array[ny, nx] - darken_amount, 0, 255)
+    
+    # 添加一些随机噪点增强效果
+    for _ in range(width * height // 50):  # 大量噪点
+        x = random.randint(0, width-1)
+        y = random.randint(0, height-1)
+        if np.mean(img_array[y, x]) > 180:  # 只在亮区域添加
+            if random.random() < 0.3:
+                img_array[y, x] = np.clip(img_array[y, x] - random.randint(10, 40), 0, 255)
+    
+    result = Image.fromarray(img_array)
     return result
