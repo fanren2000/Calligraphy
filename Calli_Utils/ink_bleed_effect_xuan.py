@@ -38,85 +38,56 @@ def add_ink_bleed_effect(image, intensity=0.3):
 
     return result.convert('RGB')
 
+import numpy as np
+from PIL import Image, ImageFilter
 
-    """添加墨迹渗透效果（宣纸特有），使用透明叠加模拟墨迹扩散"""
+import numpy as np
+from PIL import Image, ImageFilter
+
+def add_ink_bleed_effect_enhanced(image, intensity=1.0, vertical_soak=True, speckle=True, preserve_characters=True):
+    """墨迹渗透增强版：方向性渗透 + 笔压模拟 + 噪点 + 保留文字清晰度"""
     width, height = image.size
+    img_array = np.array(image)
+    gray = np.mean(img_array, axis=2)
 
-    # 创建透明渗透层
-    bleed_layer = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(bleed_layer)
+    # 创建文字掩码（深色区域）
+    char_mask = (gray < 100)
+    mask = char_mask.astype(np.uint8) * 255
+    mask_img = Image.fromarray(mask)
 
-    # 灰度图用于识别文字区域
-    gray_image = image.convert('L')
+    # 🧭 方向性渗透（垂直扩散）
+    if vertical_soak:
+        mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=0.5))  # horizontal softness
+        mask_img = mask_img.filter(ImageFilter.BoxBlur(3))                # vertical soak
+    else:
+        mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=3))    # symmetric bleed
 
-    for x in range(width):
-        for y in range(height):
-            if gray_image.getpixel((x, y)) < 100:  # 深色区域（文字）
-                for dx in range(-2, 3):
-                    for dy in range(-2, 3):
-                        nx, ny = x + dx, y + dy
-                        if 0 <= nx < width and 0 <= ny < height:
-                            if random.random() < intensity:
-                                radius = random.randint(1, 3)
-                                alpha = random.randint(10, 40)
-                                draw.ellipse((nx - radius, ny - radius, nx + radius, ny + radius),
-                                             fill=(0, 0, 0, alpha))
+    # 🖌️ 笔压模拟：根据灰度深浅调整渗透强度
+    blur_mask = np.array(mask_img) / 255.0
+    pressure_map = (100 - np.clip(gray, 0, 100)) / 100.0  # 0.0 to 1.0
+    bleed_strength = blur_mask * pressure_map * intensity * 80
+    darken = bleed_strength.astype(np.uint8)
 
-    # 模糊渗透层
-    bleed_layer = bleed_layer.filter(ImageFilter.GaussianBlur(1.5))
+    # 应用暗化效果
+    for c in range(3):
+        img_array[..., c] = np.clip(img_array[..., c] - darken, 0, 255)
 
-    # 确保原图为 RGBA 模式
-    base_rgba = image.convert('RGBA')
+    # 🌿 随机噪点增强
+    if speckle:
+        for _ in range(width * height // 50):
+            x = np.random.randint(0, width)
+            y = np.random.randint(0, height)
+            if np.mean(img_array[y, x]) > 180 and np.random.rand() < 0.3:
+                img_array[y, x] = np.clip(img_array[y, x] - np.random.randint(10, 40), 0, 255)
 
-    # 应用渗透叠加
-    result = Image.alpha_composite(base_rgba, bleed_layer)
+    # ✅ 保留文字像素为纯黑
+    if preserve_characters:
+        img_array[char_mask] = np.array([0, 0, 0])
 
-    return result.convert('RGB')
+    return Image.fromarray(img_array)
 
-    """添加墨迹渗透效果（宣纸特有）"""
-    width, height = image.size
-    
-    # 创建墨迹渗透层
-    bleed_layer = overlay = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-    
-    # 找到文字区域
-    gray_image = image.convert('L')
-    
-    for x in range(width):
-        for y in range(height):
-            # 如果是深色区域（文字）
-            if gray_image.getpixel((x, y)) < 100:
-                # 在文字周围添加渗透效果
-                for dx in range(-2, 3):
-                    for dy in range(-2, 3):
-                        nx, ny = x + dx, y + dy
-                        if 0 <= nx < width and 0 <= ny < height:
-                            if random.random() < intensity:
-                                current = bleed_layer.getpixel((nx, ny))
-                                bleed_layer.putpixel((nx, ny), min(255, int(current) + random.randint(10, 40)))
-    
-    # 模糊渗透效果
-    bleed_layer = bleed_layer.filter(ImageFilter.GaussianBlur(1.5))
-    
-    # 应用渗透效果
-    result = image.copy()
-    for x in range(width):
-        for y in range(height):
-            bleed_value = bleed_layer.getpixel((x, y))
-            if bleed_value > 0:
-                r, g, b = result.getpixel((x, y))
-                # 文字周围稍微变暗模拟渗透
-                new_color = (
-                    max(0, r - bleed_value // 10),
-                    max(0, g - bleed_value // 10),
-                    max(0, b - bleed_value // 10)
-                )
-                result.putpixel((x, y), new_color)
-    
-    
-    return result
 
-def add_ink_bleed_effect_enhanced(image, intensity=1.0):
+def add_ink_bleed_effect_enhanced_SLOW(image, intensity=1.0):
     """非常明显的图像处理效果"""
     width, height = image.size
     result = image.copy()

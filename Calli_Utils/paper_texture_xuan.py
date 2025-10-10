@@ -5,10 +5,9 @@ import math
 from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageEnhance
 import random, math
 
-def add_xuan_paper_texture(image, texture_intensity=0.25, invert_mask=True):
+def add_xuan_paper_texture(width, height, texture_intensity=0.25, invert_mask=True):
     """添加宣纸质感到图像上，支持纹理强度和可选反转"""
-    width, height = image.size
-
+    
     # 创建宣纸底色（米黄色）
     paper_base = Image.new('RGB', (width, height), (242, 232, 212))
 
@@ -53,7 +52,7 @@ def add_xuan_paper_texture(image, texture_intensity=0.25, invert_mask=True):
     fiber_rgb = Image.merge('RGB', (fiber_texture, fiber_texture, fiber_texture))
 
     # 使用 multiply 模式叠加纹理
-    result = ImageChops.multiply(image, fiber_rgb)
+    result = ImageChops.multiply(paper_base, fiber_rgb)
 
     return result
 

@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 import random
 import math
 
-def add_realistic_paper_texture(width, height, paper_type="xuan"):
+def create_realistic_paper_texture(width, height, paper_type="xuan"):
     """创建真实的纸张纹理"""
     
     # 根据纸张类型设置参数
@@ -101,3 +101,81 @@ def apply_paper_texture(image, paper_type="xuan"):
     result = ImageOps.autocontrast(result, cutoff=2)
     
     return result
+
+def create_authentic_paper_texture(width, height, paper_type="xuan"):
+    """创建真实的纸张纹理"""
+    if paper_type == "xuan":
+        base_color = (251, 245, 235)
+    else:
+        base_color = (252, 243, 229)
+    
+    img = Image.new('RGB', (width, height), base_color)
+    pixels = img.load()  # 使用load()方法提高性能
+    
+    # 添加细微的颜色变化
+    for i in range(width):
+        for j in range(height):
+            r, g, b = base_color
+            # 非常细微的颜色变化
+            variation = random.randint(-2, 2)
+            pixels[i, j] = (
+                max(0, min(255, r + variation)),
+                max(0, min(255, g + variation)),
+                max(0, min(255, b + variation))
+            )
+    
+    # 添加纤维纹理
+    draw = ImageDraw.Draw(img)
+    for _ in range(width * height // 500):  # 适量的纤维
+        x1 = random.randint(0, width-1)
+        y1 = random.randint(0, height-1)
+        length = random.randint(15, 40)
+        angle = random.uniform(0, math.pi)
+        
+        x2 = min(width-1, max(0, int(x1 + length * math.cos(angle))))
+        y2 = min(height-1, max(0, int(y1 + length * math.sin(angle))))
+        
+        # 确保坐标有效
+        if 0 <= x1 < width and 0 <= y1 < height and 0 <= x2 < width and 0 <= y2 < height:
+            # 非常细微的颜色变化
+            darken = random.uniform(0.97, 0.995)
+            r, g, b = pixels[x1, y1]
+            fiber_color = (
+                int(r * darken),
+                int(g * darken), 
+                int(b * darken)
+            )
+            
+            draw.line([(x1, y1), (x2, y2)], fill=fiber_color, width=1)
+    
+    return img
+
+def add_realistic_aging(paper_img, intensity=0.2):
+    """添加真实的老化效果"""
+    width, height = paper_img.size
+    aged_img = paper_img.copy()
+    pixels = aged_img.load()  # 使用load()方法
+    
+    # 1. 细微的色斑
+    for _ in range(int(25 * intensity)):
+        center_x = random.randint(0, width-1)
+        center_y = random.randint(0, height-1)
+        radius = random.randint(2, 8)  # 小斑点
+        
+        for i in range(max(0, center_x-radius), min(width, center_x+radius)):
+            for j in range(max(0, center_y-radius), min(height, center_y+radius)):
+                # 确保坐标有效
+                if 0 <= i < width and 0 <= j < height:
+                    dist = math.sqrt((i-center_x)**2 + (j-center_y)**2)
+                    if dist < radius:
+                        r, g, b = pixels[i, j]
+                        # 轻微变黄
+                        fade = 1.0 - (dist / radius) * 0.1
+                        pixels[i, j] = (
+                            int(r * fade),
+                            int(g * fade * 0.98),
+                            int(b * fade * 0.95)
+                        )
+    
+    return aged_img
+
