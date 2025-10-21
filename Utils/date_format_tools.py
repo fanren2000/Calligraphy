@@ -60,17 +60,24 @@ def get_vertical_lunar_date():
     
     day_text = lunar_days.get(lunar.lunar_day, "初一")
     
-    # 正确的竖排格式：每列包含完整的文字
-    # 例如："三十"应该在一列中竖排显示，而不是拆成"三"和"十"两列
-    # 正确的竖排格式：月份永远包含"月"字
-    return [
-        ["岁"],          # 第一列
-        ["次"],          # 第二列
-        [stem_char],     # 第三列：天干
-        [branch_char],   # 第四列：地支
-        ["年"],          # 第五列
-        [month_char],    # 第六列：月份数字
-        ["月"],          # 第七列："月"字（永远显示）
-        [day_text[0]],   # 第八列：日期第一部分
-        [day_text[1]] if len(day_text) > 1 else [""]  # 第九列：日期第二部分
+    # 构建日期部分 - 根据日期长度动态调整
+    date_parts = [
+        ["岁"],
+        ["次"],
+        [stem_char],
+        [branch_char], 
+        ["年"],
+        [month_char],
+        ["月"],
     ]
+    
+    # 处理日期部分
+    if len(day_text) == 1:
+        # 单字日期（理论上不会出现，但安全处理）
+        date_parts.append([day_text])
+    else:
+        # 双字日期
+        date_parts.append([day_text[0]])
+        date_parts.append([day_text[1]])
+    
+    return date_parts

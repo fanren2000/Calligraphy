@@ -7,6 +7,7 @@ from Calli_Utils import add_organic_torn_mask, safe_apply_mask
 from Calli_Utils import create_authentic_paper_texture, add_realistic_aging
 from Calli_Utils import apply_seal_safely, create_realistic_seal, add_texture_and_aging
 from Calli_Utils import add_circular_seal_with_rotation
+from Calli_Utils import add_ink_bleed_effect, add_ink_bleed_effect_optimized
 import os
 import numpy as np
 import random
@@ -255,15 +256,16 @@ def quick_fix_test():
     else:
         print("✗ 撕边效果有变化")
 
-def create_real_vertical_poem(image, poem_title, poem_text, poem_author, seal_official_text, seal_recreative_text):
+def create_real_vertical_poem(image, poem_title, poem_text, poem_author, poem_note, seal_official_text, seal_recreative_text):
     """生成真正的竖排《彩书怨》"""
     
     draw = ImageDraw.Draw(image)
     
     # 加载字体
     try:
-        font = safe_get_font("方正行楷_GBK.ttf", 75)
-        small_font = ImageFont.truetype("simkai.ttf", 30)
+        large_font = safe_get_font("方正行楷_GBK.ttf", 60)        #五言75点；七言55点
+        medium_font = safe_get_font("方正行楷_GBK.ttf", 45)        #五言55点；七言45点
+        small_font = ImageFont.truetype("FZZJ-XTCSJW.ttf", 30)      #方正字迹-邢体草书简体
     except:
         font = ImageFont.load_default()
         small_font = ImageFont.load_default()
@@ -280,38 +282,49 @@ def create_real_vertical_poem(image, poem_title, poem_text, poem_author, seal_of
 
     # 竖排参数：从右向左，从上到下
     start_x = 1200  # 从右侧开始
-    start_y = 200  # 从顶部开始
-    char_spacing = 90  # 字间距（垂直）
+    start_y = 150  # 从顶部开始。五言200点；七言150点
+    char_spacing = 70  # 字间距（垂直）。五言90点；七言60点
     line_spacing = 90  # 行间距（水平）
     
     # 绘制竖排诗文（8列，每列5个字）
     for col in range(8):  # 8句诗
-        for row in range(5):  # 每句5个字
-            char_index = col * 5 + row
+        for row in range(7):  # 每句5个字（五言）或七个字（七言）
+            char_index = col * 7 + row      #五言5；七言7
             if char_index < len(poem_chars):
                 char = poem_chars[char_index]
                 char_x = start_x - col * line_spacing
                 char_y = start_y + row * char_spacing
-                draw.text((char_x, char_y), char, font=font, fill=(0, 0, 0))
+                draw.text((char_x, char_y), char, font=large_font, fill=(0, 0, 0))
     
     # 添加标题"彩书怨"（竖排在右侧）
     title_chars = list(poem_title)
-    title_x = start_x + 80  # 诗句右侧
+    title_x = start_x + 120  # 诗句右侧
     for i, char in enumerate(title_chars):
-        draw.text((title_x, start_y + i * char_spacing), char, font=font, fill=(0, 0, 0))
+        draw.text((title_x, start_y + i * 60), char, font=medium_font, fill=(0, 0, 0))   
     
     # 添加作者"上官婉儿"（竖排在标题右侧）
     author_chars = list(poem_author)
     author_x = char_x - 200
-    author_y = start_y + 15
+    author_y = start_y + 55
     for i, char in enumerate(author_chars):
-        draw.text((author_x, start_y + i * char_spacing), char, font=small_font, fill=(0, 0, 0))
-    
+        draw.text((author_x, author_y + i * char_spacing), char, font=small_font, fill=(0, 0, 0))
+
+    # 添加说明文字
+    author_note_chars = list(poem_note)   
+    note_start_x = author_x - 35
+    note_start_y = author_y
+    for i, char in enumerate(author_note_chars):
+        draw.text((note_start_x, note_start_y + i * 35), char, font=small_font, fill=(80, 80, 80))
+
     # 添加日期
     # 日期（右列，与作者名纵向对齐）
     lunar_date_chars = get_vertical_lunar_date()
-    date_start_x = 300
-    date_start_y = start_y  # 与作者名顶部对齐
+    
+    # 添加"书"字
+    lunar_date_chars.append(["书"])
+
+    date_start_x = note_start_x - 35
+    date_start_y = author_y  # 与作者名顶部对齐
     
     for row_index, column_chars in enumerate(lunar_date_chars):
         for col_index, char in enumerate(column_chars):
@@ -324,7 +337,7 @@ def create_real_vertical_poem(image, poem_title, poem_text, poem_author, seal_of
     # 添加印章（在作者旁边）
     # 使用修正后的印章函数
     seal_x = date_start_x - 120
-    seal_y = date_start_y - 15
+    seal_y = date_start_y + 15
     print(f"seal position: {seal_x, seal_y}")
 
     # 创建透明图层用于绘制印章
@@ -349,9 +362,9 @@ def create_real_vertical_poem(image, poem_title, poem_text, poem_author, seal_of
     
     result = Image.alpha_composite(result, seal2_layer)
 
-    result.save("真正竖排格式_透明图层.png", quality=95)
-    print("生成完成：真正竖排格式.png")
-    print("布局：传统竖排，从右向左，从上到下")
+    # result.save("真正竖排格式_透明图层.png", quality=95)
+    # print("生成完成：真正竖排格式.png")
+    # print("布局：传统竖排，从右向左，从上到下")
     
     return result
   
@@ -374,22 +387,27 @@ if __name__ == "__main__":
 
     # 创建宣纸
     intensity = 0.35    #, 0.40, 0.45
+    bleeding_intensity = 0.45
     paper = create_authentic_torn_paper("large_xuan", "xuan", intensity)
     
     if paper.mode != 'RGBA':
         paper = paper.convert('RGBA')
 
-    poem_title = "彩书怨"
-    poem_author =  "上官婉儿"   
+    poem_title = "认真儿蟾宫折桂赋"
+    poem_author =  "玻璃耗子"   
     poem_text = """
-                    叶下洞庭初，思君万里余。
-                    露浓香被冷，月落锦屏虚。
-                    欲奏江南曲，贪封蓟北书。
-                    书中无别意，惟怅久离居。
+                霓裳旋舞动四方，抖音捷报誉飞扬。
+                步随鼓韵如龙跃，袖舞春风似凤翔。  
+                曼姿力压群芳艳，妙态终登金榜堂。
+                今朝捧杯传佳话，丹心不负旧时妆。
                     """
+    poem_note = "贺冠绝国潮风华舞赛魁"
     seal_official_text = "玻璃耗子"
     seal_recreative_text = "耗气长存"
-    paper = create_real_vertical_poem(paper, poem_title, poem_text, poem_author, seal_official_text, seal_recreative_text)
+    paper = create_real_vertical_poem(paper, poem_title, poem_text, poem_author, poem_note, seal_official_text, seal_recreative_text)
+    
+    # 添加墨迹渗透效果
+    paper = add_ink_bleed_effect(paper, bleeding_intensity) 
     if paper:
         paper.save(f"torn_paper_{intensity}.png")
         print(f"撕边强度 {intensity} 创建成功")

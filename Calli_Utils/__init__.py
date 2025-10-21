@@ -15,7 +15,7 @@ from .paper_texture_basic import add_paper_texture_basic
 from .paper_texture_xuan import add_xuan_paper_texture, add_xuan_paper_texture_enhanced
 from .paper_texture_rice import add_rice_paper_texture_enhanced
 from .paper_texture_parchment import add_parchment_texture_enhanced
-from .ink_bleed_effect_xuan import add_ink_bleed_effect, add_ink_bleed_effect_enhanced
+from .ink_bleed_effect_xuan import add_ink_bleed_effect, add_ink_bleed_effect_optimized, add_ink_bleed_effect_enhanced
 from .ink_bleed_effect_rice import add_subtle_ink_effect
 from .ink_bleed_effect_parchment import add_ink_bleed_effect_parchment
 from .paper_texture_type import create_realistic_paper_texture, apply_paper_texture, create_authentic_paper_texture, add_realistic_aging

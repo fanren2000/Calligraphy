@@ -221,9 +221,9 @@ def add_circular_seal_with_rotation(image, text, position, diameter=160, compact
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
         
-        temp_img = Image.new('RGBA', (text_width + 10, text_height + 10), (0, 0, 0, 0))
+        temp_img = Image.new('RGBA', (text_width + 15, text_height + 15), (0, 0, 0, 0))
         temp_draw = ImageDraw.Draw(temp_img)
-        temp_draw.text((5, 5), char, font=seal_font, fill=(255, 255, 255, 255))
+        temp_draw.text((10, 10), char, font=seal_font, fill=(255, 255, 255, 255))
         
         rotated_temp = temp_img.rotate(rotation, expand=True, resample=Image.BICUBIC)
         
