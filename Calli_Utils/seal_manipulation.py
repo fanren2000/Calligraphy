@@ -1,6 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import math
 from .seal_texture_type import add_texture_and_aging
+from .seal_border_fancy_4char import add_four_character_seal
+from .seal_border_circular_4char import add_circular_seal_with_rotation
 
 def apply_seal_safely(paper, seal, position):
     """安全地应用印章到撕边纸张"""
@@ -103,3 +105,36 @@ def create_realistic_seal(text, seal_type="square", size=400):
     img = enhancer.enhance(1.2)
     
     return img  
+
+def add_formal_seal(image, seal_official_text, position):
+    # 添加印章（在作者旁边）
+    (seal_x, seal_y) = position
+    print(f"seal position: {seal_x, seal_y}")
+
+    # 创建透明图层用于绘制印章
+    seal_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
+    
+    seal_layer = add_four_character_seal(seal_layer, seal_official_text, (seal_x, seal_y), 100)
+    
+    result = Image.alpha_composite(image, seal_layer)
+
+    return result
+
+def add_note_seal(image, seal_recreative_text, position):
+    # 添加闲
+    # note_chars = ["唐", "宫", "遗", "韵"]
+    seal_x, seal_y = position
+    note_diameter = 100
+    note_center_ratio = 0.3
+    note_char_rotation_degree = 25
+    note_text = seal_recreative_text
+    note_x = seal_x + note_diameter // 2    # 圆形的半径
+    note_y = seal_y - note_diameter // 2    # 圆形的半径
+    print(f"seal 2 position: {note_x, note_y}")
+    seal2_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
+
+    seal2_layer = add_circular_seal_with_rotation(seal2_layer, note_text, (note_x, note_y), note_diameter, note_center_ratio, note_char_rotation_degree)
+    
+    result = Image.alpha_composite(image, seal2_layer)
+    
+    return result

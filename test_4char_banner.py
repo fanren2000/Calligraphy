@@ -6,20 +6,15 @@ import time
 from datetime import datetime
 from zhdate import ZhDate
 
-# ==================== 基础工具函数 ====================
+from Utils import get_vertical_lunar_date, get_precise_font_metrics
+from Utils import parse_position_shift, apply_position_shift
+from Calli_Utils import create_authentic_torn_paper
+from Calli_Utils import add_vertical_upper_inscription, add_vertical_lower_inscription, add_special_lower_inscription
+from Calli_Utils import add_ink_bleed_effect, add_ink_bleed_effect_enhanced, add_ink_bleed_effect_optimized
+from Calli_Utils import get_lishu_spacing
+from Calli_Utils import add_formal_seal, add_note_seal
 
-def create_authentic_torn_paper(paper_size="small_xuan", paper_type="xuan", tear_intensity=0.4):
-    """创建撕边宣纸背景（简化版）"""
-    width, height = (800, 300) if paper_size == "small_xuan" else (1000, 400)
-    
-    # 创建基础纸张
-    if paper_type == "xuan":
-        base_color = (248, 240, 228)
-    else:
-        base_color = (250, 235, 215)
-    
-    paper = Image.new('RGB', (width, height), base_color)
-    return paper
+# ==================== 基础工具函数 ====================
 
 def create_test_image():
     """创建测试书法图像"""
@@ -107,28 +102,6 @@ def create_modern_banner(text_chars, paper_size=(1000, 300)):
 
 # ==================== 落款系统 ====================
 
-def add_upper_inscription(image, recipient_name, honorific="先生", humble_word="雅正"):
-    """为书法作品添加上款"""
-    upper_text = f"{recipient_name}{honorific}{humble_word}"
-    
-    print(f"🎁 添加上款: {upper_text}")
-    
-    width, height = image.size
-    upper_x = width - 200
-    upper_y = 80
-    
-    upper_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(upper_layer)
-    
-    try:
-        upper_font = ImageFont.truetype("simkai.ttf", 28)
-    except:
-        upper_font = ImageFont.load_default()
-    
-    draw.text((upper_x, upper_y), upper_text, fill=(60, 60, 60, 220), font=upper_font)
-    result = Image.alpha_composite(image.convert('RGBA'), upper_layer)
-    
-    return result
 
 def add_banner_signature(banner, layout="traditional", author_name="某某"):
     """添加横幅下款"""
@@ -157,327 +130,7 @@ def add_banner_signature(banner, layout="traditional", author_name="某某"):
     
     return banner
 
-def get_vertical_lunar_date(include_shu=True, include_author=None, include_season=False):
-    """获取竖排农历日期 - 修正季节逻辑"""
-    today = datetime.now()
-    lunar = ZhDate.from_datetime(today)
-    
-    # 天干地支
-    heavenly_stems = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
-    earthly_branches = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
-    
-    year_index = (lunar.lunar_year - 4) % 60
-    stem_char = heavenly_stems[year_index % 10]
-    branch_char = earthly_branches[year_index % 12]
-    
-    # 农历月份
-    lunar_months = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"]
-    month_char = lunar_months[lunar.lunar_month - 1]
-    
-    # 农历日期
-    lunar_days = {
-        1: "初一", 2: "初二", 3: "初三", 4: "初四", 5: "初五", 6: "初六", 7: "初七", 8: "初八", 9: "初九", 10: "初十",
-        11: "十一", 12: "十二", 13: "十三", 14: "十四", 15: "十五", 16: "十六", 17: "十七", 18: "十八", 19: "十九", 20: "二十",
-        21: "廿一", 22: "廿二", 23: "廿三", 24: "廿四", 25: "廿五", 26: "廿六", 27: "廿七", 28: "廿八", 29: "廿九", 30: "三十"
-    }
-    
-    day_text = lunar_days.get(lunar.lunar_day, "初一")
-    
-    # 季节映射（基于农历月份）
-    def get_season_by_lunar_month(lunar_month):
-        season_mapping = {
-            1: "孟春",  2: "仲春",  3: "季春",
-            4: "孟夏",  5: "仲夏",  6: "季夏", 
-            7: "孟秋",  8: "仲秋",  9: "季秋",
-            10: "孟冬", 11: "仲冬", 12: "季冬"
-        }
-        return season_mapping.get(lunar_month, "")
-    
-    # 构建基础部分
-    date_parts = [
-        ["岁"], ["次"], [stem_char], [branch_char], ["年"]
-    ]
-    
-    # 🎯 修正：确保季节功能正常工作
-    if include_season:
-        # 使用季节模式：只显示季节
-        season_text = get_season_by_lunar_month(lunar.lunar_month)
-        print(f"🔍 调试信息: lunar_month={lunar.lunar_month}, season_text='{season_text}'")
-        
-        if season_text and len(season_text) == 2:
-            date_parts.append([season_text[0]])  # 孟/仲/季
-            date_parts.append([season_text[1]])  # 春/夏/秋/冬
-            print(f"✅ 成功添加季节: {season_text}")
-        else:
-            print(f"❌ 季节获取失败，回退到传统模式")
-            # 回退到传统模式
-            date_parts.extend([
-                [month_char], ["月"], [day_text[0]]
-            ])
-            if len(day_text) > 1 and day_text[1].strip():
-                date_parts.append([day_text[1]])
-    else:
-        # 传统模式：显示具体月份和日期
-        date_parts.extend([
-            [month_char], ["月"], [day_text[0]]
-        ])
-        if len(day_text) > 1 and day_text[1].strip():
-            date_parts.append([day_text[1]])
-    
-    # 添加作者（如果提供）
-    if include_author:
-        for char in include_author:
-            date_parts.append([char])
-    
-    # 添加"书"字
-    if include_shu:
-        date_parts.append(["书"])
-    
-    # 打印最终结果
-    final_text = "".join([part[0] for part in date_parts])
-    print(f"📅 最终输出: {final_text}")
-    
-    return date_parts
-
-
 # 修改后的落款函数
-def add_vertical_lower_inscription(image, author_name="某某", include_date=True, 
-                                  layout="traditional", columns=2, location=None,
-                                  include_season=False):
-    """修正版竖排下款 - 正确的季节逻辑"""
-    
-    # 生成下款内容
-    inscription_parts = []
-    
-    # 🎯 根据列数组织内容
-    if columns == 1:
-        # 单列：作者 + 书
-        inscription_parts.append([author_name, "书"])
-        
-    elif columns == 2:
-        # 双列：时间 + 作者+书
-        if include_date:
-            date_data = get_vertical_lunar_date(include_shu=False, include_author=None, include_season=include_season)
-            date_text = [part[0] for part in date_data if part[0].strip()]
-            inscription_parts.append(date_text)
-        
-        # 修正：将作者名字拆分为单个字符
-        author_chars = list(author_name) + ["书"]
-        inscription_parts.append(author_chars)
-        
-    elif columns >= 3:
-        # 三列：时间 + 地点 + 作者+书
-        if include_date:
-            date_data = get_vertical_lunar_date(include_shu=False, include_author=None, include_season=include_season)
-            date_text = [part[0] for part in date_data if part[0].strip()]
-            inscription_parts.append(date_text)
-        
-        if location:
-            location_chars = ["于"] + list(location)
-            inscription_parts.append(location_chars)
-        else:
-            inscription_parts.append(["记"])
-        
-        author_chars = list(author_name) + ["书"]
-        inscription_parts.append(author_chars)
-    
-    print(f"📝 添加竖排下款 ({columns}列):")
-    for i, column in enumerate(inscription_parts):
-        print(f"   第{i+1}列: {''.join(column)}")
-    
-    width, height = image.size
-    
-    # 🎯 根据布局决定起始位置
-    if layout == "traditional":
-        start_x = 60
-    else:
-        start_x = width - 80
-    
-    lower_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(lower_layer)
-    
-    try:
-        lower_font = ImageFont.truetype("simkai.ttf", 22)
-    except:
-        lower_font = ImageFont.load_default()
-    
-    column_spacing = 35
-    start_y = height - 250
-    
-    for col_index, column_text in enumerate(inscription_parts):
-        current_x = start_x + col_index * column_spacing
-        
-        for row_index, char in enumerate(column_text):
-            draw.text((current_x, start_y + row_index * 30), char, 
-                     fill=(60, 60, 60, 220), font=lower_font)
-    
-    result = Image.alpha_composite(image.convert('RGBA'), lower_layer)
-    return result
-
-def add_special_lower_inscription(image, author_name, purpose_text, 
-                                       include_date=True, layout="traditional"):
-    """
-    专门为您的需求定制的三列下款
-    """
-    
-    # 🎯 组织三列内容
-    columns = []
-    
-    # 第一列：日期
-    if include_date:
-        date_data = get_vertical_lunar_date(include_shu=False)
-        date_text = [part[0] for part in date_data if part[0].strip()]
-        columns.append(date_text)
-    else:
-        # 如果没有日期，第一列可以为空或简单标记
-        columns.append(["记"])
-    
-    # 第二列：书写目的（精简处理）
-    purpose_short = shorten_purpose_text(purpose_text)
-    purpose_columns = split_purpose_text(purpose_short, max_chars_per_column=10)
-    
-    # 如果目的文本不长，放在一列
-    if len(purpose_columns) == 1:
-        columns.append(purpose_columns[0])
-    else:
-        # 如果目的文本较长，分成两列
-        columns.extend(purpose_columns)
-        # 调整作者列为第四列
-        author_text = list(author_name) + ["书"]
-        columns.append(author_text)
-    
-    # 第三列：作者+书（如果目的只有一列）
-    if len(columns) == 2:
-        author_chars = list(author_name) + ["书"]
-        columns.append(author_chars)
-    
-    print(f"📝 定制三列下款:")
-    for i, column in enumerate(columns):
-        print(f"   第{i+1}列: {''.join(column)}")
-    
-    width, height = image.size
-    
-    # 根据布局决定位置
-    if layout == "traditional":
-        start_x = 60   # 左侧
-    else:
-        start_x = width - 80 - (len(columns) * 35)  # 右侧
-    
-    inscription_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(inscription_layer)
-    
-    try:
-        font = ImageFont.truetype("simkai.ttf", 22)
-    except:
-        font = ImageFont.load_default()
-    
-    # 分列绘制
-    column_spacing = 35
-    
-    for col_index, column_text in enumerate(columns):
-        current_x = start_x + col_index * column_spacing
-        column_height = len(column_text) * 30
-        current_y = height - 40 - column_height
-        
-        for row_index, char in enumerate(column_text):
-            draw.text((current_x, current_y + row_index * 30), char, 
-                     fill=(60, 60, 60, 220), font=font)
-    
-    result = Image.alpha_composite(image.convert('RGBA'), inscription_layer)
-    return result
-
-def shorten_purpose_text(purpose_text):
-    """精简书写目的文本"""
-    
-    # 常见精简规则
-    shortening_rules = {
-        "为清华大学校庆120年": "贺清华百廿华诞",
-        "为清华大学120周年校庆": "贺清华双甲子", 
-        "庆祝清华大学建校120年": "庆清华百廿庆典",
-        "为清华百廿年校庆": "贺清华百廿",
-        "清华大学120年校庆": "清华百廿庆"
-    }
-    
-    # 直接匹配
-    if purpose_text in shortening_rules:
-        return shortening_rules[purpose_text]
-    
-    # 智能精简
-    short_text = purpose_text
-    short_text = short_text.replace("清华大学", "清华")
-    short_text = short_text.replace("校庆", "庆")
-    short_text = short_text.replace("120", "百廿")
-    short_text = short_text.replace("120周年", "百廿")
-    short_text = short_text.replace("为", "贺")
-    short_text = short_text.replace("庆祝", "庆")
-    
-    # 确保以贺/庆/祝开头
-    if not any(short_text.startswith(prefix) for prefix in ["贺", "庆", "祝", "颂"]):
-        short_text = "贺" + short_text
-    
-    return short_text
-
-def split_purpose_text(purpose_text, max_chars_per_column=4):
-    """分割目的文本到多列"""
-    
-    if len(purpose_text) <= max_chars_per_column:
-        return [list(purpose_text)]
-    
-    # 智能分割：尽量在语义边界分割
-    text = purpose_text
-    
-    # 尝试在常见字后分割
-    split_positions = []
-    for split_char in ["贺", "庆", "祝", "于", "为"]:
-        if split_char in text[1:]:  # 不在第一个字
-            pos = text.index(split_char, 1)
-            split_positions.append(pos)
-    
-    if split_positions:
-        split_pos = min(split_positions)
-        return [list(text[:split_pos]), list(text[split_pos:])]
-    else:
-        # 平均分割
-        mid_point = len(text) // 2
-        return [list(text[:mid_point]), list(text[mid_point:])]
-
-def add_vertical_upper_inscription(image, recipient_name, honorific="先生", humble_word="雅正", layout="traditional"):
-    """修正版竖排上款 - 支持不同布局"""
-    upper_text = f"{recipient_name}{honorific}{humble_word}"
-    
-    print(f"🎁 添加竖排上款 ({layout}布局): {upper_text}")
-    
-    width, height = image.size
-    
-    # 🎯 根据布局微调位置
-    if layout == "traditional":
-        # 传统布局：右侧上方
-        upper_x = width - 80
-        upper_y = 60
-        position_desc = "右侧上方"
-    else:
-        # 现代布局：左侧上方
-        upper_x = 60
-        upper_y = 60  
-        position_desc = "左侧上方"
-    
-    print(f"   位置: {position_desc} ({upper_x}, {upper_y})")
-    
-    upper_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(upper_layer)
-    
-    try:
-        upper_font = ImageFont.truetype("simkai.ttf", 24)
-    except:
-        upper_font = ImageFont.load_default()
-    
-    # 竖排绘制
-    for i, char in enumerate(upper_text):
-        draw.text((upper_x, upper_y + i * 30), char, 
-                 fill=(60, 60, 60, 220), font=upper_font)
-    
-    result = Image.alpha_composite(image.convert('RGBA'), upper_layer)
-    return result
 
 def explain_lower_inscription_columns():
     """解释下款分列规则"""
@@ -565,39 +218,6 @@ def create_correct_traditional_banner(text_chars, paper_size=(1000, 300)):
     
     return paper
 
-def get_precise_font_metrics(font, test_char="汉"):
-    """获取精确的字体度量"""
-    try:
-        # 方法1：使用getbbox（包含边距）
-        bbox = font.getbbox(test_char)
-        full_width = bbox[2] - bbox[0]
-        full_height = bbox[3] - bbox[1]
-        
-        # 方法2：使用getmetrics获取基线信息
-        ascent, descent = font.getmetrics()
-        actual_height = ascent + descent
-        
-        print(f"📐 字体度量信息:")
-        print(f"   getbbox 尺寸: {full_width} x {full_height}")
-        print(f"   getmetrics 高度: {actual_height} (ascent={ascent}, descent={descent})")
-        
-        return {
-            'full_width': full_width,
-            'full_height': full_height,
-            'actual_height': actual_height,
-            'ascent': ascent,
-            'descent': descent
-        }
-    except:
-        # 备用方案
-        bbox = font.getbbox(test_char)
-        return {
-            'full_width': bbox[2] - bbox[0],
-            'full_height': bbox[3] - bbox[1],
-            'actual_height': bbox[3] - bbox[1],
-            'ascent': (bbox[3] - bbox[1]) * 0.8,  # 估算
-            'descent': (bbox[3] - bbox[1]) * 0.2
-        }
 
 # 在您的代码中使用
 main_font = ImageFont.truetype("ShanHaiBoYaGuLiW-2.ttf", 240)
@@ -606,16 +226,17 @@ metrics = get_precise_font_metrics(main_font, "汉")
 char_width = metrics['full_width']
 char_height = metrics['actual_height']  # 使用实际高度，而不是包含边距的高度
 
-def create_perfectly_centered_banner(text_chars, paper_size=(1000, 300)):
+def create_perfectly_centered_banner(text_chars, paper_size=(1000, 300), position_shift=None):
     """修正垂直居中的横幅"""
+    tear_intensity = 0.15       # 0.35, 0.40, 0.45
     
-    paper = create_authentic_torn_paper("handscroll", "xuan", 0.2)
-    paper = paper.resize(paper_size)
+    paper = create_authentic_torn_paper("tall-handscroll", "xuan", tear_intensity)
+    # paper = paper.resize(paper_size)
     draw = ImageDraw.Draw(paper)
     
     width, height = paper_size
     
-    main_font = ImageFont.truetype("ShanHaiBoYaGuLiW-2.ttf", 280)
+    main_font = ImageFont.truetype("ShanHaiBoYaGuLiW-2.ttf", 260)
     
     # 获取精确的字体度量
     metrics = get_precise_font_metrics(main_font, "汉")
@@ -636,12 +257,16 @@ def create_perfectly_centered_banner(text_chars, paper_size=(1000, 300)):
     # 传统方法：start_y = (height - char_height) / 2  ← 这是错误的！
     # 正确方法：
     start_y = (height - actual_char_height) / 2 - metrics['descent'] * 0.5
+
+    if position_shift:
+        start_x, start_y, width_new, width_height = apply_position_shift(start_x, start_y, width, height, position_shift)
     
     print(f"🎯 修正后的布局参数:")
     print(f"   字体实际高度: {actual_char_height}")
     print(f"   字体总高度: {metrics['full_height']}")
     print(f"   上边距(ascent): {ascent}")
     print(f"   下边距(descent): {metrics['descent']}")
+    print(f"   起始X坐标: {start_x}")
     print(f"   起始Y坐标: {start_y}")
     
     # 绘制文字（从右到左）
@@ -654,72 +279,6 @@ def create_perfectly_centered_banner(text_chars, paper_size=(1000, 300)):
     
     return paper
 
-def get_lishu_spacing(char_width, style="traditional"):
-    """获取隶书专用字间距"""
-    
-    if style == "traditional":
-        # 传统隶书：非常紧凑，字距约为字宽的10-15%
-        return char_width * 0.12
-    elif style == "modern":
-        # 现代隶书：稍宽松，字距约为字宽的15-20%
-        return char_width * 0.18
-    elif style == "decorative":
-        # 装饰性隶书：更宽松，字距约为字宽的20-25%
-        return char_width * 0.22
-    else:
-        # 默认：适中
-        return char_width * 0.15
-
-
-
-# ==================== 墨迹渗透效果 ====================
-
-def add_ink_bleed_effect_fixed(image, intensity=0.3, image_mode="RGBA"):
-    """修复版墨迹渗透效果"""
-    width, height = image.size
-
-    bleed_layer = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(bleed_layer)
-
-    gray_image = image.convert('L')
-
-    # 根据强度调整参数
-    bleed_range = max(1, int(3 * intensity))
-    max_alpha = int(80 * intensity)
-    min_alpha = int(20 * intensity)
-    
-    print(f"[墨迹渗透] 强度:{intensity}, 范围:{bleed_range}, Alpha:{min_alpha}-{max_alpha}")
-
-    for x in range(0, width, 2):
-        for y in range(0, height, 2):
-            if gray_image.getpixel((x, y)) < 100:
-                bleed_count = max(1, int(5 * intensity))
-                
-                for _ in range(bleed_count):
-                    angle = random.uniform(0, 2 * math.pi)
-                    distance = random.randint(1, bleed_range)
-                    
-                    nx = int(x + distance * math.cos(angle))
-                    ny = int(y + distance * math.sin(angle))
-                    
-                    if 0 <= nx < width and 0 <= ny < height:
-                        alpha = random.randint(min_alpha, max_alpha)
-                        radius = random.randint(1, 2)
-                        
-                        draw.ellipse((nx - radius, ny - radius, nx + radius, ny + radius),
-                                    fill=(0, 0, 0, alpha))
-
-    # 根据强度调整模糊程度
-    blur_radius = 0.5 + intensity * 1.0
-    bleed_layer = bleed_layer.filter(ImageFilter.GaussianBlur(blur_radius))
-
-    base_rgba = image.convert('RGBA')
-    result = Image.alpha_composite(base_rgba, bleed_layer)
-
-    if image_mode == "RGB":
-        return result.convert('RGB')
-    else:
-        return result
 
 # ==================== 完整作品创建函数 ====================
 
@@ -754,7 +313,8 @@ def create_complete_banner(text, layout="traditional",
     
     # 创建基础横幅
     if layout == "traditional":
-        banner = create_perfectly_centered_banner(text_chars, paper_size)
+        position_shift_str = "R20"
+        banner = create_perfectly_centered_banner(text_chars, paper_size, position_shift_str)
         print("🎋 传统布局: 横排主体 + 竖排落款")
     else:
         banner = create_modern_banner(text_chars, paper_size)
@@ -766,7 +326,7 @@ def create_complete_banner(text, layout="traditional",
             banner, 
             recipient_info['name'],
             recipient_info.get('honorific', '先生'),
-            recipient_info.get('humble_word', '雅正'),
+            recipient_info.get('humble_word', '雅正'),      # 这里雅正是缺省值
             layout=layout
         )
     
@@ -782,8 +342,16 @@ def create_complete_banner(text, layout="traditional",
     
     # 添加墨迹渗透效果
     if add_ink_bleed:
-        banner = add_ink_bleed_effect_fixed(banner, ink_intensity)
+        # 添加墨迹渗透效果
+        bleeding_intensity = 0.45
+        banner = add_ink_bleed_effect_optimized(banner, bleeding_intensity) 
         print(f"🎨 添加墨迹渗透效果，强度: {ink_intensity}")
+
+
+    banner = add_formal_seal(banner, author_name, (60, 60))   
+
+
+    banner = add_note_seal(banner, "鼠灯十三", (width - 150, height - 80))  # 耗气长存
     
     return banner
 # ==================== 预设配置 ====================
@@ -1011,7 +579,7 @@ def quick_start_example():
         "氣勢如肱",         # "气势如肱",
         layout="traditional",
         add_upper=True, 
-        recipient_info={"name": "任真儿", "honorific": "主播", "humble_word": "雅正"},
+        recipient_info={"name": "任真儿", "honorific": "主播", "humble_word": "惠存"},      # 雅正
         add_ink_bleed=True,
         ink_intensity=0.3,
         author_name="玻璃耗子"

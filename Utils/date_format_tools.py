@@ -34,8 +34,8 @@ def get_lunar_date():
         f"{month_name}{day_name}"
     ]
 
-def get_vertical_lunar_date():
-    """获取正确的竖排农历日期（数字保持完整竖排）"""
+def get_vertical_lunar_date(include_shu=True, include_author=None, include_season=False):
+    """获取竖排农历日期 - 修正季节逻辑"""
     today = datetime.now()
     lunar = ZhDate.from_datetime(today)
     
@@ -51,7 +51,7 @@ def get_vertical_lunar_date():
     lunar_months = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"]
     month_char = lunar_months[lunar.lunar_month - 1]
     
-    # 农历日期（保持完整数字）
+    # 农历日期
     lunar_days = {
         1: "初一", 2: "初二", 3: "初三", 4: "初四", 5: "初五", 6: "初六", 7: "初七", 8: "初八", 9: "初九", 10: "初十",
         11: "十一", 12: "十二", 13: "十三", 14: "十四", 15: "十五", 16: "十六", 17: "十七", 18: "十八", 19: "十九", 20: "二十",
@@ -60,24 +60,58 @@ def get_vertical_lunar_date():
     
     day_text = lunar_days.get(lunar.lunar_day, "初一")
     
-    # 构建日期部分 - 根据日期长度动态调整
+    # 季节映射（基于农历月份）
+    def get_season_by_lunar_month(lunar_month):
+        season_mapping = {
+            1: "孟春",  2: "仲春",  3: "季春",
+            4: "孟夏",  5: "仲夏",  6: "季夏", 
+            7: "孟秋",  8: "仲秋",  9: "季秋",
+            10: "孟冬", 11: "仲冬", 12: "季冬"
+        }
+        return season_mapping.get(lunar_month, "")
+    
+    # 构建基础部分
     date_parts = [
-        ["岁"],
-        ["次"],
-        [stem_char],
-        [branch_char], 
-        ["年"],
-        [month_char],
-        ["月"],
+        ["岁"], ["次"], [stem_char], [branch_char], ["年"]
     ]
     
-    # 处理日期部分
-    if len(day_text) == 1:
-        # 单字日期（理论上不会出现，但安全处理）
-        date_parts.append([day_text])
+    # 🎯 修正：确保季节功能正常工作
+    if include_season:
+        # 使用季节模式：只显示季节
+        season_text = get_season_by_lunar_month(lunar.lunar_month)
+        print(f"🔍 调试信息: lunar_month={lunar.lunar_month}, season_text='{season_text}'")
+        
+        if season_text and len(season_text) == 2:
+            date_parts.append([season_text[0]])  # 孟/仲/季
+            date_parts.append([season_text[1]])  # 春/夏/秋/冬
+            print(f"✅ 成功添加季节: {season_text}")
+        else:
+            print(f"❌ 季节获取失败，回退到传统模式")
+            # 回退到传统模式
+            date_parts.extend([
+                [month_char], ["月"], [day_text[0]]
+            ])
+            if len(day_text) > 1 and day_text[1].strip():
+                date_parts.append([day_text[1]])
     else:
-        # 双字日期
-        date_parts.append([day_text[0]])
-        date_parts.append([day_text[1]])
+        # 传统模式：显示具体月份和日期
+        date_parts.extend([
+            [month_char], ["月"], [day_text[0]]
+        ])
+        if len(day_text) > 1 and day_text[1].strip():
+            date_parts.append([day_text[1]])
+    
+    # 添加作者（如果提供）
+    if include_author:
+        for char in include_author:
+            date_parts.append([char])
+    
+    # 添加"书"字
+    if include_shu:
+        date_parts.append(["书"])
+    
+    # 打印最终结果
+    final_text = "".join([part[0] for part in date_parts])
+    print(f"📅 最终输出: {final_text}")
     
     return date_parts

@@ -194,7 +194,8 @@ def add_circular_seal_with_rotation(image, text, position, diameter=160, compact
     draw.ellipse([x-radius, y-radius, x+radius, y+radius], fill=(180,30,30))
     
     try:
-        seal_font = ImageFont.truetype("simkai.ttf", diameter // 4)
+        # 魏碑： HanYiWeiBeiJian-1
+        seal_font = ImageFont.truetype("HanYiWaWaZhuanJian-1.ttf", diameter // 4)
         vertical_offset = 0
         # seal_font = ImageFont.truetype("方圆印章篆体.ttf", diameter // 4)
         # vertical_offset = diameter // 12

@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 import random
 import math
+from Calli_Utils.paper_edge_natural_torn import add_organic_torn_mask, safe_apply_mask
 
 def create_realistic_paper_texture(width, height, paper_type="xuan"):
     """创建真实的纸张纹理"""
@@ -92,7 +93,7 @@ def apply_paper_texture(image, paper_type="xuan"):
     width, height = image.size
     
     # 创建纸张纹理
-    paper_texture = add_realistic_paper_texture(width, height, paper_type)
+    paper_texture = create_realistic_paper_texture(width, height, paper_type)
     
     # 将原图与纸张纹理混合
     result = Image.blend(image, paper_texture, alpha=0.3)
@@ -178,4 +179,42 @@ def add_realistic_aging(paper_img, intensity=0.2):
                         )
     
     return aged_img
+
+# entry function
+def create_authentic_torn_paper(paper_size="small_xuan", paper_type="xuan", tear_intensity=0.4):
+    """创建真实的撕边纸张"""
+    PAPER_SIZES = {
+        "small_xuan": (400, 600),  # 减小尺寸便于测试
+        "medium_xuan": (600, 800),
+        "large_xuan": (1600, 800),
+        "handscroll": (800, 200),
+        "tall-handscroll": (1500, 500),
+        "wide-handscroll": (1600, 400),
+        "album_leaf": (400, 500),
+    }
+    
+    width, height = PAPER_SIZES.get(paper_size, (400, 600))
+    
+    print(f"创建真实撕边纸张: {width} × {height}, 撕边强度: {tear_intensity}")
+    
+    try:
+        # 1. 创建基础纹理
+        paper = create_authentic_paper_texture(width, height, paper_type)
+        
+        # 2. 创建有机撕边蒙版
+        mask = add_organic_torn_mask(width, height, tear_intensity)
+        
+        # 3. 安全应用蒙版
+        final_paper = safe_apply_mask(paper, mask)
+        
+        # 4. 添加老化效果
+        aged_paper = add_realistic_aging(paper, intensity=0.15)
+        final_paper_aged = safe_apply_mask(aged_paper, mask)
+        
+        return final_paper_aged
+        
+    except Exception as e:
+        print(f"创建纸张时出错: {e}")
+        # 返回一个简单的备用图像
+        return Image.new('RGBA', (width, height), (255, 255, 255, 255))
 
