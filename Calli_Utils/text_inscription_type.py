@@ -65,6 +65,43 @@ def add_vertical_upper_inscription(image, recipient_name, honorific="先生", hu
     result = Image.alpha_composite(image.convert('RGBA'), upper_layer)
     return result
 
+def add_special_upper_inscription(image, inscription_text, layout="traditional"):
+    # """竖排上款 - 上款由参数输入"""
+   
+    print(f"🎁 添加竖排上款 ({layout}布局): {inscription_text}")
+    
+    width, height = image.size
+    
+    # 🎯 根据布局微调位置
+    if layout == "traditional":
+        # 传统布局：右侧上方
+        upper_x = width - 80
+        upper_y = 60
+        position_desc = "右侧上方"
+    else:
+        # 现代布局：左侧上方
+        upper_x = 60
+        upper_y = 60  
+        position_desc = "左侧上方"
+    
+    print(f"   位置: {position_desc} ({upper_x}, {upper_y})")
+    
+    upper_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(upper_layer)
+    
+    try:
+        upper_font = ImageFont.truetype("华文行楷.ttf", 24)
+    except:
+        upper_font = ImageFont.load_default()
+    
+    # 竖排绘制
+    for i, char in enumerate(inscription_text):
+        draw.text((upper_x, upper_y + i * 30), char, 
+                 fill=(60, 60, 60, 220), font=upper_font)
+    
+    result = Image.alpha_composite(image.convert('RGBA'), upper_layer)
+    return result
+
 def add_vertical_lower_inscription(image, author_name="某某", include_date=True, 
                                   layout="traditional", columns=2, location=None,
                                   include_season=False):
@@ -139,7 +176,7 @@ def add_vertical_lower_inscription(image, author_name="某某", include_date=Tru
     return result
 
 def add_special_lower_inscription(image, author_name, purpose_text, 
-                                       include_date=True, layout="traditional"):
+                                       include_date=True, layout="traditional", bottom_margin = 140):
     """
     专门为您的需求定制的三列下款
     """
@@ -157,7 +194,8 @@ def add_special_lower_inscription(image, author_name, purpose_text,
         columns.append(["记"])
     
     # 第二列：书写目的（精简处理）
-    purpose_short = shorten_purpose_text(purpose_text)
+    # purpose_short = shorten_purpose_text(purpose_text)
+    purpose_short = purpose_text
     purpose_columns = split_purpose_text(purpose_short, max_chars_per_column=10)
     
     # 如果目的文本不长，放在一列
@@ -183,7 +221,7 @@ def add_special_lower_inscription(image, author_name, purpose_text,
     
     # 根据布局决定位置
     if layout == "traditional":
-        start_x = 60   # 左侧
+        start_x = 80   # 左侧
     else:
         start_x = width - 80 - (len(columns) * 35)  # 右侧
     
@@ -201,7 +239,7 @@ def add_special_lower_inscription(image, author_name, purpose_text,
     for col_index, column_text in enumerate(columns):
         current_x = start_x + col_index * column_spacing
         column_height = len(column_text) * 30
-        current_y = height - 40 - column_height
+        current_y = height - bottom_margin - column_height
         
         for row_index, char in enumerate(column_text):
             draw.text((current_x, current_y + row_index * 30), char, 

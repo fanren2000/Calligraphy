@@ -130,7 +130,7 @@ def add_ink_bleed_effect_optimized(image, intensity=0.5, image_mode="RGBA"):
                             if dx*dx + dy*dy <= radius*radius:
                                 # 累积Alpha值，而不是取最大值
                                 current_alpha = bleed_array[cy, cx, 3]
-                                new_alpha = min(255, current_alpha + alpha // 3)
+                                new_alpha = min(255, int(current_alpha) + alpha // 3)
                                 bleed_array[cy, cx, 3] = new_alpha
     
     # 🔧 修复8: 动态模糊

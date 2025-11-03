@@ -199,7 +199,8 @@ def create_authentic_torn_paper(paper_size="small_xuan", paper_type="xuan", tear
     
     try:
         # 1. 创建基础纹理
-        paper = create_authentic_paper_texture(width, height, paper_type)
+        paper = create_realistic_paper_texture(width, height, paper_type)
+        # paper = create_authentic_paper_texture(width, height, paper_type)
         
         # 2. 创建有机撕边蒙版
         mask = add_organic_torn_mask(width, height, tear_intensity)

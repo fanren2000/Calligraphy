@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import math
 from .seal_texture_type import add_texture_and_aging
-from .seal_border_fancy_4char import add_four_character_seal
+from .seal_border_fancy_4char import add_four_character_seal, add_seal_transparent, add_seal_with_text_penetration, add_seal_with_text_penetration_fixed
 from .seal_border_circular_4char import add_circular_seal_with_rotation
 
 def apply_seal_safely(paper, seal, position):
@@ -106,16 +106,25 @@ def create_realistic_seal(text, seal_type="square", size=400):
     
     return img  
 
-def add_formal_seal(image, seal_official_text, position):
+def add_formal_seal(image, seal_official_text, position, size, opacity=0.7):
     # 添加印章（在作者旁边）
     (seal_x, seal_y) = position
     print(f"seal position: {seal_x, seal_y}")
 
+    print(f"🔍 函数输入 - 位置: {position}, 尺寸: {size}")
+    x, y = position
+    
+    # 检查是否有位置偏移
+    print(f"   实际绘制位置: ({x}, {y})")
+    
+    # 在绘制前标记期望位置
+    if image.mode != 'RGBA':
+        image = image.convert('RGBA')
+
     # 创建透明图层用于绘制印章
     seal_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    
-    seal_layer = add_four_character_seal(seal_layer, seal_official_text, (seal_x, seal_y), 100)
-    
+    # seal_layer = add_seal_transparent(seal_layer, seal_official_text, (seal_x, seal_y), size)
+    seal_layer = add_seal_with_text_penetration(seal_layer, seal_official_text, (seal_x, seal_y), size, opacity)
     result = Image.alpha_composite(image, seal_layer)
 
     return result
