@@ -1,225 +1,244 @@
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from Utils.font_tools import safe_get_font
-from Utils.date_format_tools import get_vertical_lunar_date
-from Calli_Utils.seal_border_fancy_4char import add_four_character_seal, calculate_font_offset
+from PIL import Image, ImageDraw, ImageFont
+import os
+from Utils import safe_get_font
 
-def add_four_character_seal_transparent_fixed(image, text, position, size=120, opacity=0.7):
-    """完全修复的透明印章函数"""
+def create_calligraphy_with_seal():
+    """创建书法作品，印章盖在文字上"""
     
-    # 🎯 关键修复1: 确保输入输出都是RGBA
-    original_mode = image.mode
-    if image.mode != 'RGBA':
-        image = image.convert('RGBA')
-        print(f"🔄 图像模式转换: {original_mode} -> RGBA")
+    # 查找中文字体
+    def find_chinese_font():
+        font_paths = [
+            "C:/Windows/Fonts/simhei.ttf",
+            "C:/Windows/Fonts/simsun.ttc", 
+            "C:/Windows/Fonts/simkai.ttf",
+            "C:/Windows/Fonts/msyh.ttc",
+        ]
+        for path in font_paths:
+            if os.path.exists(path):
+                return path
+        return None
     
-    # 🎯 关键修复2: 创建完全透明的图层
-    seal_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(seal_layer)
+    font_path = "C:/Windows/Fonts/方圆印章篆体.ttf"
     
-    x, y = position
-    square_size = size
-
-    # 🎯 关键修复3: 正确的透明度计算
-    bg_alpha = int(255 * opacity)  # 背景透明度
-    border_alpha = int(255 * min(1.0, opacity + 0.2))  # 边框稍深
+    # 创建画布
+    width, height = 800, 400
+    image = Image.new('RGB', (width, height), 'lightyellow')
+    draw = ImageDraw.Draw(image)
     
-    print(f"🎯 透明度参数: opacity={opacity}, bg_alpha={bg_alpha}, border_alpha={border_alpha}")
-
-    # 绘制半透明印章背景
-    seal_bg_color = (180, 30, 30, bg_alpha)
-    draw.rectangle([x, y, x + square_size, y + square_size], fill=seal_bg_color)
-    
-    # 绘制印章边框
-    border_color = (150, 20, 20, border_alpha)
-    draw.rectangle([x, y, x + square_size, y + square_size], 
-                  outline=border_color, width=3)
-
     # 加载字体
     try:
-        seal_font = safe_get_font("方圆印章篆体.ttf", square_size // 3)
+        if font_path:
+            calligraphy_font = safe_get_font(font_path, 120)
+            seal_font = safe_get_font(font_path, 35)
+        else:
+            raise Exception("No Chinese font found")
     except:
+        # 使用默认字体作为后备
+        calligraphy_font = ImageFont.load_default()
         seal_font = ImageFont.load_default()
+    
+    # 书法文字
+    text = "大道至简"
+    
+    # 计算文字位置（居中）
+    bbox = draw.textbbox((0, 0), text, font=calligraphy_font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    text_x = (width - text_width) // 2
+    text_y = (height - text_height) // 2 - 20
+    
+    # 绘制书法文字
+    draw.text((text_x, text_y), text, fill='darkred', font=calligraphy_font)
+    
+    # 印章文字
+    seal_text = "玻璃耗子"
+    
+    # 计算印章位置 - 盖在文字的右下角
+    seal_bbox = draw.textbbox((0, 0), seal_text, font=seal_font)
+    seal_width = seal_bbox[2] - seal_bbox[0] + 20  # 加边距
+    seal_height = seal_bbox[3] - seal_bbox[1] + 20
+    
+    # 印章位置：文字区域的右下角，稍微重叠
+    seal_x = text_x + text_width - seal_width + 30  # 向右移动
+    seal_y = text_y + text_height - seal_height + 10  # 向下移动
+    
+    # 绘制印章背景（浅红色半透明）
+    seal_bg = Image.new('RGBA', (seal_width, seal_height), (255, 200, 200, 150))
+    image.paste(seal_bg, (seal_x, seal_y), seal_bg)
+    
+    # 绘制印章边框
+    draw.rectangle([seal_x, seal_y, seal_x + seal_width, seal_y + seal_height], 
+                  outline='red', width=2)
+    
+    # 绘制印章文字（居中在印章内）
+    seal_text_x = seal_x + (seal_width - (seal_bbox[2] - seal_bbox[0])) // 2 - seal_bbox[0]
+    seal_text_y = seal_y + (seal_height - (seal_bbox[3] - seal_bbox[1])) // 2 - seal_bbox[1]
+    draw.text((seal_text_x, seal_text_y), seal_text, fill='darkred', font=seal_font)
+    
+    return image
 
-    # 🎯 关键修复4: 确保文字不透明
-    text_color = (255, 255, 255, 255)  # 文字完全不透明
-
-    if len(text) == 4:
-        chars = list(text)
-        cell_size = square_size // 2
-        font_offset = calculate_font_offset(seal_font, chars[0], square_size, "印章篆体")
-
-        centers = [
-            (x + cell_size // 2, y + cell_size // 2 + font_offset),
-            (x + cell_size + cell_size // 2, y + cell_size // 2 + font_offset),
-            (x + cell_size // 2, y + cell_size + cell_size // 2 + font_offset),
-            (x + cell_size + cell_size // 2, y + cell_size + cell_size // 2 + font_offset)
-        ]
-
-        for i, (center_x, center_y) in enumerate(centers):
-            char_bbox = draw.textbbox((0, 0), chars[i], font=seal_font)
-            char_width = char_bbox[2] - char_bbox[0]
-            char_height = char_bbox[3] - char_bbox[1]
-            char_x = center_x - char_width // 2
-            char_y = center_y - char_height // 2
-            
-            # 🎯 使用正确的文字颜色
-            draw.text((char_x, char_y), chars[i], font=seal_font, fill=text_color)
-
-    # 🎯 关键修复5: 使用alpha_composite确保透明度
-    result = Image.alpha_composite(image, seal_layer)
+def create_transparent_seal_version():
+    """创建带透明效果的印章版本"""
     
-    # 🎯 关键修复6: 恢复原始模式（如果需要）
-    if original_mode == "RGB":
-        result = result.convert('RGB')
-        print("🔄 图像模式恢复: RGBA -> RGB")
+    # 查找字体
+    font_path = "C:/Windows/Fonts/simhei.ttf"
+    if not os.path.exists(font_path):
+        font_path = None
     
-    print(f"✅ 透明印章完成 - 实际透明度: {opacity}")
-    return result
-
-def add_seal_with_debug_transparency(image, text, position, size=120, opacity=0.7):
-    """带调试信息的透明印章"""
+    # 创建主画布
+    width, height = 800, 400
+    background = Image.new('RGB', (width, height), 'lightyellow')
     
-    print(f"🔧 透明度调试开始: opacity={opacity}")
-    
-    original_mode = image.mode
-    if image.mode != 'RGBA':
-        image = image.convert('RGBA')
-        print(f"   模式转换: {original_mode} -> RGBA")
-    
-    # 创建印章图层
-    seal_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(seal_layer)
-    
-    x, y = position
-    square_size = size
-    
-    # 计算alpha值
-    bg_alpha = int(255 * opacity)
-    border_alpha = int(255 * min(1.0, opacity + 0.2))
-    
-    print(f"   计算Alpha值: bg_alpha={bg_alpha}, border_alpha={border_alpha}")
-    
-    # 测试绘制不同透明度的区域
-    test_colors = [
-        ((255, 0, 0, bg_alpha), "印章背景"),
-        ((0, 255, 0, border_alpha), "印章边框"), 
-        ((0, 0, 255, 255), "测试文字")
-    ]
-    
-    # 绘制测试区域
-    for i, (color, desc) in enumerate(test_colors):
-        test_x = x + i * 30
-        draw.rectangle([test_x, y-30, test_x+20, y-10], fill=color)
-        draw.text((test_x, y-25), desc, fill=(0, 0, 0, 255))
-        print(f"   绘制{desc}: {color}")
-    
-    # 绘制实际印章
-    seal_bg_color = (180, 30, 30, bg_alpha)
-    draw.rectangle([x, y, x + square_size, y + square_size], fill=seal_bg_color)
-    
-    border_color = (150, 20, 20, border_alpha)
-    draw.rectangle([x, y, x + square_size, y + square_size], 
-                  outline=border_color, width=3)
-    
-    # 添加文字
+    # 加载字体
     try:
-        font = safe_get_font("方圆印章篆体.ttf", square_size // 3)
+        if font_path:
+            calligraphy_font = ImageFont.truetype(font_path, 120)
+            seal_font = ImageFont.truetype(font_path, 35)
+        else:
+            raise Exception("No font")
     except:
-        font = ImageFont.load_default()
+        calligraphy_font = ImageFont.load_default()
+        seal_font = ImageFont.load_default()
     
-    if len(text) == 4:
-        chars = list(text)
-        cell_size = square_size // 2
-        
-        for i, char in enumerate(chars):
-            row = i // 2
-            col = i % 2
-            char_x = x + col * cell_size + 15
-            char_y = y + row * cell_size + 15
-            draw.text((char_x, char_y), char, fill=(255, 255, 255, 255), font=font)
+    draw = ImageDraw.Draw(background)
     
-    # 合成
-    result = Image.alpha_composite(image, seal_layer)
+    # 书法文字
+    text = "大道至简"
+    bbox = draw.textbbox((0, 0), text, font=calligraphy_font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    text_x = (width - text_width) // 2
+    text_y = (height - text_height) // 2 - 20
     
-    if original_mode == "RGB":
-        result = result.convert('RGB')
+    draw.text((text_x, text_y), text, fill='darkred', font=calligraphy_font)
     
-    print(f"✅ 透明度调试完成")
-    return result
+    # 创建独立的印章图层
+    seal_text = "玻璃耗子"
+    seal_bbox = draw.textbbox((0, 0), seal_text, font=seal_font)
+    seal_width = seal_bbox[2] - seal_bbox[0] + 40
+    seal_height = seal_bbox[3] - seal_bbox[1] + 30
+    
+    # 创建透明印章
+    seal_layer = Image.new('RGBA', (seal_width, seal_height), (0, 0, 0, 0))
+    seal_draw = ImageDraw.Draw(seal_layer)
+    
+    # 绘制印章红色背景（半透明）
+    seal_draw.rectangle([0, 0, seal_width, seal_height], 
+                       fill=(255, 0, 0, 80))  # 半透明红色
+    
+    # 绘制印章边框
+    seal_draw.rectangle([0, 0, seal_width-1, seal_height-1], 
+                       outline=(255, 0, 0, 255), width=3)
+    
+    # 绘制印章文字
+    seal_text_x = (seal_width - (seal_bbox[2] - seal_bbox[0])) // 2 - seal_bbox[0]
+    seal_text_y = (seal_height - (seal_bbox[3] - seal_bbox[1])) // 2 - seal_bbox[1]
+    seal_draw.text((seal_text_x, seal_text_y), seal_text, 
+                  fill=(255, 0, 0, 255), font=seal_font)
+    
+    # 将印章盖在书法文字上（重叠位置）
+    seal_x = text_x + text_width - seal_width + 20
+    seal_y = text_y + text_height - seal_height - 10
+    
+    # 合并图层
+    background.paste(seal_layer, (seal_x, seal_y), seal_layer)
+    
+    return background
 
-def test_minimal_transparency():
-    """最小化透明度测试"""
+def create_multiple_seals_version():
+    """创建多个印章版本的书法作品"""
     
-    print("\n🎯 最小化透明度测试:")
-
-    # 添加文字
+    font_path = "C:/Windows/Fonts/方圆印章篆体.ttf"
+    if not os.path.exists(font_path):
+        font_path = None
+    
+    width, height = 900, 500
+    image = Image.new('RGB', (width, height), 'lightyellow')
+    draw = ImageDraw.Draw(image)
+    
     try:
-        font = safe_get_font("方圆印章篆体.ttf", 120 // 3)
+        if font_path:
+            calligraphy_font = safe_get_font(font_path, 140)
+            seal_font = safe_get_font(font_path, 30)
+            small_seal_font = safe_get_font(font_path, 25)
+        else:
+            raise Exception("No font")
     except:
-        font = ImageFont.load_default()
+        calligraphy_font = ImageFont.load_default()
+        seal_font = ImageFont.load_default()
+        small_seal_font = ImageFont.load_default()
     
-    # 创建最简单的测试
-    base = Image.new('RGB', (200, 200), 'white')
-    draw = ImageDraw.Draw(base)
-    draw.text((80, 80), "文字", fill='black', font=font)
-    base.save("minimal_base.png")
+    # 书法文字
+    text = "大道至简"
+    bbox = draw.textbbox((0, 0), text, font=calligraphy_font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    text_x = (width - text_width) // 2
+    text_y = (height - text_height) // 2 - 30
     
-    # 转换为RGBA
-    base_rgba = base.convert('RGBA')
+    draw.text((text_x, text_y), text, fill='darkred', font=calligraphy_font)
     
-    # 创建完全透明的图层
-    layer = Image.new('RGBA', (200, 200), (0, 0, 0, 0))
-    layer_draw = ImageDraw.Draw(layer)
+    # 主印章（右下角）
+    main_seal_text = "玻璃耗子"
+    main_bbox = draw.textbbox((0, 0), main_seal_text, font=seal_font)
+    main_seal_width = main_bbox[2] - main_bbox[0] + 30
+    main_seal_height = main_bbox[3] - main_bbox[1] + 25
     
-    # 直接绘制半透明矩形
-    test_opacity = 0.3
-    test_alpha = int(255 * test_opacity)
-    layer_draw.rectangle([50, 50, 150, 150], fill=(255, 0, 0, test_alpha))
+    main_seal_x = text_x + text_width - main_seal_width - 10
+    main_seal_y = text_y + text_height - main_seal_height - 5
     
-    print(f"   测试透明度: {test_opacity} -> Alpha: {test_alpha}")
-    print(f"   使用颜色: (255, 0, 0, {test_alpha})")
+    # 绘制主印章
+    draw.rectangle([main_seal_x, main_seal_y, 
+                   main_seal_x + main_seal_width, 
+                   main_seal_y + main_seal_height], 
+                  outline='red', width=3, fill=(255, 200, 200, 128))
     
-    # 保存图层本身
-    layer.save("minimal_layer.png")
+    main_text_x = main_seal_x + (main_seal_width - (main_bbox[2] - main_bbox[0])) // 2 - main_bbox[0]
+    main_text_y = main_seal_y + (main_seal_height - (main_bbox[3] - main_bbox[1])) // 2 - main_bbox[1]
+    draw.text((main_text_x, main_text_y), main_seal_text, fill='darkred', font=seal_font)
     
-    # 合成
-    result = Image.alpha_composite(base_rgba, layer)
-    result.save("minimal_result.png")
+    # 小印章（左下角）
+    small_seal_text = "鉴赏"
+    small_bbox = draw.textbbox((0, 0), small_seal_text, font=small_seal_font)
+    small_seal_size = 80
     
-    print("   ✅ 保存 minimal_*.png 文件")
-    print("   请检查 minimal_layer.png - 应该看到半透明红色")
-    print("   请检查 minimal_result.png - 应该看到文字透过红色")
+    small_seal_x = text_x + 20
+    small_seal_y = text_y + text_height - small_seal_size + 10
+    
+    # 绘制圆形小印章
+    draw.ellipse([small_seal_x, small_seal_y, 
+                  small_seal_x + small_seal_size, 
+                  small_seal_y + small_seal_size], 
+                 outline='red', width=2)
+    
+    small_text_x = small_seal_x + (small_seal_size - (small_bbox[2] - small_bbox[0])) // 2 - small_bbox[0]
+    small_text_y = small_seal_y + (small_seal_size - (small_bbox[3] - small_bbox[1])) // 2 - small_bbox[1]
+    draw.text((small_text_x, small_text_y), small_seal_text, fill='red', font=small_seal_font)
+    
+    return image
 
-# test_minimal_transparency()
+# 生成三个版本
+print("生成书法作品...")
 
-# # 方法1: 使用完全修复版本
-author_name = "玻璃耗子"
-# 添加文字
-try:
-    font = safe_get_font("方圆印章篆体.ttf", 120 // 3)
-except:
-    font = ImageFont.load_default()
+# 版本1：基础版本
+result1 = create_calligraphy_with_seal()
+result1.save("calligraphy_seal_v1.jpg")
+print("✅ 版本1已保存: calligraphy_seal_v1.jpg")
 
-# 创建最简单的测试
-image = Image.new('RGB', (600, 600), 'white')
-draw = ImageDraw.Draw(image)
-draw.text((80, 80), "文字", fill='black', font=font)
+# 版本2：透明印章版本
+result2 = create_transparent_seal_version()
+result2.save("calligraphy_seal_v2.jpg")
+print("✅ 版本2已保存: calligraphy_seal_v2.jpg")
 
-image = add_four_character_seal_transparent_fixed(
-    image, author_name, (20, 20), 
-    opacity=0.6  # 60%透明度
-)
+# 版本3：多个印章版本
+result3 = create_multiple_seals_version()
+result3.save("calligraphy_seal_v3.jpg")
+print("✅ 版本3已保存: calligraphy_seal_v3.jpg")
 
-# # 方法2: 使用调试版本查看问题
-# image = add_seal_with_debug_transparency(
-#     image, author_name, (120, 400),
-#     opacity=0.6
-# )
+print("\n🎨 三个版本都已生成完成！")
+print("   版本1: 基础红色印章")
+print("   版本2: 透明效果印章") 
+print("   版本3: 多个印章（主印章+鉴赏章）")
 
-# # 方法3: 测试不同透明度
-for opacity in [0.3, 0.5, 0.8]:
-    test_img = add_four_character_seal_transparent_fixed(
-        image.copy(), author_name, (100, 150), 
-        opacity=opacity
-    )
-    test_img.save(f"test_opacity_{opacity}.png")
+# 显示其中一个版本
+result1.show()

@@ -138,7 +138,7 @@ def create_vertical_five_character_poem(image, poem_title,
     start_x = 1200  # 从右侧开始
     start_y = 150  # 从顶部开始。五言200点；七言150点
     char_spacing = 90  # 字间距（垂直）。五言90点；七言60点
-    line_spacing = 110  # 行间距（水平）
+    line_spacing = 120  # 行间距（水平）
     
     # 添加竖排上款
     if add_upper and recipient_info:
@@ -204,11 +204,12 @@ def create_vertical_five_character_poem(image, poem_title,
         print(f"🎨 添加墨迹渗透效果，强度: {ink_intensity}")
 
     seal_side_len = 120
-    
+    seal_vertical_offsize = -10
 
-    image = add_formal_seal(image, author_name, (140, height - lower_inscription_bottom_margin - seal_side_len), seal_side_len, 0.85)   
+    image = add_formal_seal(image, author_name, (140, height - lower_inscription_bottom_margin - seal_side_len + seal_vertical_offsize), seal_side_len, 0.75)   
 
-    image = add_note_seal(image, "耗气长存", (width - 240, 675))  # 
+    note_seal_diameter = 100
+    image = add_note_seal(image, "耗气长存", (width - 240, height - lower_inscription_bottom_margin + seal_vertical_offsize - note_seal_diameter), note_seal_diameter)  # 
 
     image = add_leisure_oval_seal(image, "鼠灯十三",  (80, start_y), 120, 30, 3)
     

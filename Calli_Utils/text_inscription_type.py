@@ -242,7 +242,9 @@ def add_special_lower_inscription(image, author_name, purpose_text,
         current_y = height - bottom_margin - column_height
         
         for row_index, char in enumerate(column_text):
-            draw.text((current_x, current_y + row_index * 30), char, 
+            char_y = current_y + row_index * 30
+            print(f"   第{col_index}列, 第{row_index}行位置: x:{current_x} y: {char_y}")
+            draw.text((current_x, char_y), char, 
                      fill=(60, 60, 60, 220), font=font)
     
     result = Image.alpha_composite(image.convert('RGBA'), inscription_layer)

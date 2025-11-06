@@ -109,7 +109,7 @@ def create_realistic_seal(text, seal_type="square", size=400):
 def add_formal_seal(image, seal_official_text, position, size, opacity=0.7):
     # 添加印章（在作者旁边）
     (seal_x, seal_y) = position
-    print(f"seal position: {seal_x, seal_y}")
+    print(f"方章 seal position: {seal_x, seal_y}")
 
     print(f"🔍 函数输入 - 位置: {position}, 尺寸: {size}")
     x, y = position
@@ -129,17 +129,17 @@ def add_formal_seal(image, seal_official_text, position, size, opacity=0.7):
 
     return result
 
-def add_note_seal(image, seal_recreative_text, position):
+def add_note_seal(image, seal_recreative_text, position, diameter):
     # 添加闲
     # note_chars = ["唐", "宫", "遗", "韵"]
     seal_x, seal_y = position
-    note_diameter = 100
+    note_diameter = diameter
     note_center_ratio = 0.3
     note_char_rotation_degree = 25
     note_text = seal_recreative_text
     note_x = seal_x + note_diameter // 2    # 圆形的半径
-    note_y = seal_y - note_diameter // 2    # 圆形的半径
-    print(f"seal 2 position: {note_x, note_y}")
+    note_y = seal_y + note_diameter // 2    # 圆形的半径
+    print(f"圆形 seal position: {note_x, note_y}")
     seal2_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
 
     seal2_layer = add_circular_seal_with_rotation(seal2_layer, note_text, (note_x, note_y), note_diameter, note_center_ratio, note_char_rotation_degree)
