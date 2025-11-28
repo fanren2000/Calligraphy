@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import math
 from .seal_texture_type import add_texture_and_aging
-from .seal_border_fancy_4char import add_four_character_seal, add_seal_transparent, add_seal_with_text_penetration, add_seal_with_text_penetration_fixed
+from .seal_border_fancy_4char import add_four_character_seal, add_seal_transparent, add_seal_with_text_penetration
 from .seal_border_circular_4char import add_circular_seal_with_rotation
 
 def apply_seal_safely(paper, seal, position):
@@ -106,7 +106,7 @@ def create_realistic_seal(text, seal_type="square", size=400):
     
     return img  
 
-def add_formal_seal(image, seal_official_text, position, size, opacity=0.7):
+def add_formal_seal(image, seal_official_text, position, size=100, opacity=0.7):
     # 添加印章（在作者旁边）
     (seal_x, seal_y) = position
     print(f"方章 seal position: {seal_x, seal_y}")
@@ -129,7 +129,7 @@ def add_formal_seal(image, seal_official_text, position, size, opacity=0.7):
 
     return result
 
-def add_note_seal(image, seal_recreative_text, position, diameter):
+def add_note_seal(image, seal_recreative_text, position, diameter=100):
     # 添加闲
     # note_chars = ["唐", "宫", "遗", "韵"]
     seal_x, seal_y = position

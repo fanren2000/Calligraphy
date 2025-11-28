@@ -188,9 +188,12 @@ def create_authentic_torn_paper(paper_size="small_xuan", paper_type="xuan", tear
         "medium_xuan": (600, 800),
         "large_xuan": (1600, 800),
         "handscroll": (800, 200),
-        "tall-handscroll": (1500, 500),
-        "wide-handscroll": (1600, 400),
+        "tall_handscroll": (1500, 500),
+        "wide_handscroll": (1600, 400),
         "album_leaf": (400, 500),
+        "v_handscroll": (500, 1500),
+        "v_wide_handscroll": (500, 1000),
+        "v_tall_handscroll": (400, 1600)
     }
     
     width, height = PAPER_SIZES.get(paper_size, (400, 600))

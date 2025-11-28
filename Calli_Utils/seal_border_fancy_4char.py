@@ -2,6 +2,7 @@ import cv2
 from PIL import Image, ImageFilter
 from PIL import Image, ImageDraw, ImageFont
 from Utils import safe_get_font
+from config import PAPER_COLORS
 import random
 import os
 import numpy as np
@@ -127,11 +128,13 @@ def add_seal_transparent(image, text, position, size=120):
     print(f"✅ 简单半透明印章完成")
     return result
 
-def add_seal_with_text_penetration(image, text, position, size=120, opacity=0.7):
+def add_seal_with_text_penetration(image, text, position, size=120, opacity=0.7, style="aged", intensity=0.6):
     """在工作函数基础上添加透明度参数"""
     
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
+
+    pixels = image.load()    
     
     # 创建印章图层
     seal_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
@@ -147,7 +150,7 @@ def add_seal_with_text_penetration(image, text, position, size=120, opacity=0.7)
     
     seal_bg_color = (200, 50, 50, dynamic_alpha)    # 动态透明度背景
     border_color = (150, 20, 20, dynamic_alpha)               # 不透明边框
-    text_color = (255, 255, 255, dynamic_alpha)     # 透明文字
+    text_color = PAPER_COLORS.get("xuan") + (dynamic_alpha,)     # 透明文字
 
     print(f"🎯 动态透明度: opacity={opacity} * {base_alpha} = {dynamic_alpha}")
 
@@ -189,18 +192,37 @@ def add_seal_with_text_penetration(image, text, position, size=120, opacity=0.7)
         # 微调篆体字水平位置(测试经验值）：
         char_zhuanti_x_offside = 5
         for i, (pos_x, pos_y) in enumerate(positions):
-            # char_x = char_x - 2 // 2
-            # char_y = char_y + 60 // 2
             bbox = draw.textbbox((0, 0), text, font=font)
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
             char_x = pos_x - font_offset // 2 - char_zhuanti_x_offside       # - text_width // 2
             char_y = pos_y - text_height // 2 
             draw.text((char_x, char_y), chars[i], fill=text_color, font=font)
+
+    # 🎨 添加印章区域的老化纹理
+    if style == 'aged':
+        for i in range(x, x + square_size):
+            for j in range(y, y + square_size):
+                r, g, b, a = pixels[i, j]
+
+                # 添加随机噪点模拟纹理
+                if random.random() < intensity:
+                    variation = random.randint(-20, 20)
+                    r = max(0, min(255, r + variation))
+                    g = max(0, min(255, g + variation))
+                    b = max(0, min(255, b + variation))
+
+                # 模拟墨水不均匀
+                if random.random() < intensity / 2:
+                    a = max(0, min(255, a - random.randint(0, 30)))
+
+                pixels[i, j] = (r, g, b, a)
+        
     
     # 合成
     result = Image.alpha_composite(image, seal_layer)
     print(f"✅ 增强版半透明印章完成 - 透明度: {opacity}")
+
     return result
 
 def calculate_font_offset(font, sample_char, square_size, font_name):

@@ -27,7 +27,7 @@ def add_upper_inscription(image, recipient_name, honorific="先生", humble_word
     
     return result
 
-def add_vertical_upper_inscription(image, recipient_name, honorific="先生", humble_word="雅正", layout="traditional"):
+def add_vertical_upper_inscription(image, recipient_name, honorific="先生", humble_word="雅正", layout="traditional", top_margin = 100, horizontal_margin=100):
     """修正版竖排上款 - 支持不同布局"""
     upper_text = f"{recipient_name}{honorific}{humble_word}"
     
@@ -38,13 +38,13 @@ def add_vertical_upper_inscription(image, recipient_name, honorific="先生", hu
     # 🎯 根据布局微调位置
     if layout == "traditional":
         # 传统布局：右侧上方
-        upper_x = width - 80
-        upper_y = 60
+        upper_x = width - horizontal_margin
+        upper_y = top_margin
         position_desc = "右侧上方"
     else:
         # 现代布局：左侧上方
-        upper_x = 60
-        upper_y = 60  
+        upper_x = horizontal_margin
+        upper_y = top_margin
         position_desc = "左侧上方"
     
     print(f"   位置: {position_desc} ({upper_x}, {upper_y})")
@@ -221,7 +221,7 @@ def add_special_lower_inscription(image, author_name, purpose_text,
     
     # 根据布局决定位置
     if layout == "traditional":
-        start_x = 80   # 左侧
+        start_x = 60   # 左侧
     else:
         start_x = width - 80 - (len(columns) * 35)  # 右侧
     
@@ -235,14 +235,17 @@ def add_special_lower_inscription(image, author_name, purpose_text,
     
     # 分列绘制
     column_spacing = 35
+    row_spacing = 30
+
+    
     
     for col_index, column_text in enumerate(columns):
         current_x = start_x + col_index * column_spacing
-        column_height = len(column_text) * 30
+        column_height = len(column_text) * row_spacing
         current_y = height - bottom_margin - column_height
         
         for row_index, char in enumerate(column_text):
-            char_y = current_y + row_index * 30
+            char_y = current_y + row_index * row_spacing
             print(f"   第{col_index}列, 第{row_index}行位置: x:{current_x} y: {char_y}")
             draw.text((current_x, char_y), char, 
                      fill=(60, 60, 60, 220), font=font)

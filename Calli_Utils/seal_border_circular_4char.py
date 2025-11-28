@@ -1,5 +1,6 @@
 import random
 from PIL import Image, ImageDraw, ImageFont
+from config import PAPER_COLORS
 import math
 import os
 
@@ -187,6 +188,8 @@ def add_circular_seal_with_rotation(image, text, position, diameter=160, compact
     
     x, y = position
     radius = diameter // 2
+    text_color = PAPER_COLORS.get("xuan") + (255,)
+    print(f"圆章文字颜色：{text_color}")
     
     # 绘制印章
     draw.ellipse([x-radius-4, y-radius-4, x+radius+4, y+radius+4], 
@@ -224,7 +227,8 @@ def add_circular_seal_with_rotation(image, text, position, diameter=160, compact
         
         temp_img = Image.new('RGBA', (text_width + 15, text_height + 15), (0, 0, 0, 0))
         temp_draw = ImageDraw.Draw(temp_img)
-        temp_draw.text((10, 10), char, font=seal_font, fill=(255, 255, 255, 255))
+
+        temp_draw.text((10, 10), char, font=seal_font, fill=text_color)
         
         rotated_temp = temp_img.rotate(rotation, expand=True, resample=Image.BICUBIC)
         

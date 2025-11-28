@@ -327,17 +327,20 @@ def create_complete_banner(text, layout="traditional",
             recipient_info['name'],
             recipient_info.get('honorific', '先生'),
             recipient_info.get('humble_word', '雅正'),      # 这里雅正是缺省值
-            layout=layout
+            layout=layout,
+            top_margin=60,
+            horizontal_margin=110
         )
     
     # 添加竖排下款
+    lower_inscription_bottom_margin = 60
     banner = add_special_lower_inscription(
         banner, 
         author_name, 
         "颂舞者健美肱肌",
         include_date,
         layout=layout,
-        
+        bottom_margin = lower_inscription_bottom_margin
     )
     
     # 添加墨迹渗透效果
@@ -348,10 +351,10 @@ def create_complete_banner(text, layout="traditional",
         print(f"🎨 添加墨迹渗透效果，强度: {ink_intensity}")
 
 
-    banner = add_formal_seal(banner, author_name, (60, 60))   
+    banner = add_formal_seal(banner, author_name, (60, 60), 100)   
 
 
-    banner = add_note_seal(banner, "鼠灯十三", (width - 150, height - 80))  # 耗气长存
+    banner = add_note_seal(banner, "耗气长存", (width - 150, height - 160), 100)  # 耗气长存
     
     return banner
 # ==================== 预设配置 ====================
@@ -579,7 +582,7 @@ def quick_start_example():
         "氣勢如肱",         # "气势如肱",
         layout="traditional",
         add_upper=True, 
-        recipient_info={"name": "任真儿", "honorific": "主播", "humble_word": "惠存"},      # 雅正
+        recipient_info={"name": "认真儿", "honorific": "主播", "humble_word": "惠存"},      # 雅正
         add_ink_bleed=True,
         ink_intensity=0.3,
         author_name="玻璃耗子"
