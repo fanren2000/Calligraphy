@@ -68,7 +68,7 @@ def visualize_colors(colors_bgr, label_counts, image_shape):
     plt.show()
 
 # 使用示例
-image_path = "Source/calligraphy_work_torn_edge.png"
+image_path = "Frames/calligraphy_work_torn_edge.png"
 dominant_color, all_colors, label_counts, image_shape = get_dominant_color(image_path, k=3)
 
 print("主背景颜色 (RGB):", dominant_color)

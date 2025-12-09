@@ -1,11 +1,12 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
 plt.rcParams['axes.unicode_minus'] = False    # 解决负号显示问题
 
-def create_scroll_template_correct_coords(image_path, output_path, inner_top, inner_bottom, inner_left, inner_right, transparency_level=128):
+def create_scroll_template_correct_coords(image_path, output_path, inner_top, inner_bottom, inner_left, inner_right, transparency_level=128, bg_color = (255, 255, 255, 255)):
     """
     使用正确的坐标参数创建卷轴模板
     
@@ -74,20 +75,26 @@ def create_scroll_template_correct_coords(image_path, output_path, inner_top, in
     print(f"   下边框: {border_bottom}px")
     print(f"   左边框: {border_left}px")
     print(f"   右边框: {border_right}px")
+
+    # 计算内部区域信息
+    inner_height = inner_bottom - inner_top
+    inner_width = inner_right - inner_left
+
+    if bg_color != None:
+        calligraphy_bg = np.full((inner_height, inner_width, 4), bg_color, dtype=np.uint8)
+        rgba[inner_top:inner_bottom, inner_left:inner_right] = calligraphy_bg
     
     
     # 创建透明度掩码 & 获取alpha通道的引用
     alpha = rgba[:, :, 3]
     
     # 设置内部区域为半透明
-    alpha[inner_top:inner_bottom, inner_left:inner_right] = transparency_level
+    alpha[inner_top:inner_bottom, inner_left:inner_right] =  transparency_level
     
     # 应用透明度
     rgba[:, :, 3] = alpha
     
-    # 计算内部区域信息
-    inner_height = inner_bottom - inner_top
-    inner_width = inner_right - inner_left
+    
     
     print(f"\n🎨 内部透明区域:")
     print(f"   坐标范围: y={inner_top}~{inner_bottom}, x={inner_left}~{inner_right}")
@@ -97,7 +104,7 @@ def create_scroll_template_correct_coords(image_path, output_path, inner_top, in
     
     # 保存结果
     if output_path:
-        cv2.imwrite(output_path, rgba)
+        cv2.imwrite(output_path, cv2.cvtColor(rgba, cv2.COLOR_BGR2BGRA))
         print(f"\n✅ 模板已保存: {output_path}")
     
     # 可视化
@@ -242,6 +249,7 @@ def interactive_coordinate_selector(image_path):
 
 def embed_calligraphy_in_scroll(scroll_path, calligraphy_path, output_path, 
                                 inner_top, inner_bottom, inner_left, inner_right,
+                                scroll_area_trans_level=128,
                                 calligraphy_opacity=1.0, blend_mode='normal',
                                 calligraphy_margin=20, debug=False):
     """
@@ -268,8 +276,30 @@ def embed_calligraphy_in_scroll(scroll_path, calligraphy_path, output_path,
         scroll_path,
         scroll_template_transparent,
         inner_top, inner_bottom, inner_left, inner_right,
-        transparency_level=128  # 卷轴内部50%透明
+        transparency_level=scroll_area_trans_level,  # 卷轴内部50%透明
+        bg_color=None
     )
+    # img = cv2.imread(scroll_path)
+    #  # 根据通道数处理
+    # if len(img.shape) == 2:  # 灰度
+    #     print("🎨 处理灰度图像...")
+    #     # 灰度 -> BGR -> BGRA
+    #     bgr = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    #     rgba = cv2.cvtColor(bgr, cv2.COLOR_BGR2BGRA)
+    # elif img.shape[2] == 3:  # BGR
+    #     print("🎨 处理BGR图像...")
+    #     # BGR -> BGRA
+    #     rgba = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+    # elif img.shape[2] == 4:  # BGRA
+    #     print("🎨 处理BGRA图像...")
+    #     rgba = img.copy()  # 直接复制，不转换
+    # else:
+    #     print(f"❌ 不支持的通道数: {img.shape[2]}")
+    #     return None
+    
+    # print(f"✅ 处理后: {rgba.shape}")
+
+    # scroll_template = rgba
     
     if scroll_template is None:
         print("❌ 卷轴模板创建失败")
@@ -281,12 +311,13 @@ def embed_calligraphy_in_scroll(scroll_path, calligraphy_path, output_path,
     # 计算可用于书法的区域（减去边距）
     calligraphy_area_width = (inner_right - inner_left) - 2 * calligraphy_margin
     calligraphy_area_height = (inner_bottom - inner_top) - 2 * calligraphy_margin
+    # calligraphy_area_width: 1872 - 589 - 2 * 1 = 1281
     
     if calligraphy_area_width <= 0 or calligraphy_area_height <= 0:
         print(f"❌ 书法区域太小: {calligraphy_area_width}x{calligraphy_area_height}")
         return None
     
-    calligraphy_prepared = prepare_calligraphy_image(
+    calligraphy_prepared = safe_resize_rgba_image(
         calligraphy_path,
         calligraphy_area_width,
         calligraphy_area_height
@@ -307,6 +338,8 @@ def embed_calligraphy_in_scroll(scroll_path, calligraphy_path, output_path,
     
     calligraphy_y = inner_top + calligraphy_margin + (calligraphy_area_height - calligraphy_height) // 2
     calligraphy_x = inner_left + calligraphy_margin + (calligraphy_area_width - calligraphy_width) // 2
+
+    # calligraphy_x: 589 + 1 + (1281 - 1278) // 2 = 591
     
     print(f"   书法放置位置: x={calligraphy_x}, y={calligraphy_y}")
     print(f"   书法尺寸: {calligraphy_width}x{calligraphy_height}")
@@ -410,7 +443,7 @@ def prepare_calligraphy_image(calligraphy_path, target_width, target_height):
     h, w = calligraphy_rgba.shape[:2]
     
     # 计算缩放比例
-    scale = min(target_width / w, target_height / h)
+    scale = max(target_width / w, target_height / h)
     new_width = int(w * scale)
     new_height = int(h * scale)
     
@@ -545,14 +578,482 @@ def show_fusion_result(scroll_template, calligraphy, result,
     plt.tight_layout()
     plt.show()
 
+def safe_resize_rgba_image(calligraphy_path, target_width, target_height):
+    """
+    安全地调整RGBA图像大小
+    """
+    # 读取书法图像
+    image_rgba = cv2.imread(calligraphy_path, cv2.IMREAD_UNCHANGED)
+
+    # 去掉四周透明边
+    image_rgba = crop_image_by_border_length(image_rgba, 20, 20, 20, 20)
+
+    # 1. 验证输入
+    if image_rgba is None:
+        print("❌ 输入图像为空")
+        return None
+    
+    if target_width <= 0 or target_height <= 0:
+        print(f"❌ 目标尺寸无效: {target_width}x{target_height}")
+        return None
+    
+    # 获取原始尺寸
+    original_height, original_width = image_rgba.shape[:2]
+    
+    print(f"📏 调整尺寸: {original_width}x{original_height} -> {target_width}x{target_height}")
+    
+    # 2. 根据是放大还是缩小选择合适的插值方法
+    if target_width < original_width or target_height < original_height:
+        # 缩小图像：使用INTER_AREA（保持锐利边缘）
+        interpolation = cv2.INTER_AREA
+        print("  模式: 缩小 (使用INTER_AREA)")
+    else:
+        # 放大图像：使用INTER_CUBIC或INTER_LINEAR
+        interpolation = cv2.INTER_CUBIC  # 或INTER_LANCZOS4，质量更好但更慢
+        print("  模式: 放大 (使用INTER_CUBIC)")
+    
+    # 3. 确保目标尺寸是整数
+    target_width = int(round(target_width))
+    target_height = int(round(target_height))
+    
+    # 4. 确保最小尺寸
+    if target_width < 1 or target_height < 1:
+        print(f"⚠️  目标尺寸太小，调整为最小值")
+        target_width = max(1, target_width)
+        target_height = max(1, target_height)
+    
+    try:
+        # 5. 调整大小
+        resized = cv2.resize(
+            image_rgba, 
+            (target_width, target_height), 
+            interpolation=interpolation
+        )
+        
+        print(f"✅ 调整成功: {target_width}x{target_height}")
+        return resized
+        
+    except Exception as e:
+        print(f"❌ 调整大小失败: {e}")
+        return None
+    
+
+
+def crop_image_by_border_length(image, top_len, bottom_len, left_len, right_len):
+    """
+    根据边框长度裁剪图像
+    
+    参数:
+        image: 输入图像 (numpy数组或文件路径)
+        top_len: 上边裁剪长度 (从顶部去掉的像素数)
+        bottom_len: 下边裁剪长度 (从底部去掉的像素数)
+        left_len: 左边裁剪长度 (从左边去掉的像素数)
+        right_len: 右边裁剪长度 (从右边去掉的像素数)
+    
+    返回:
+        cropped_image: 裁剪后的图像
+    
+    示例:
+        # 从每边裁剪50像素
+        cropped = crop_image_by_border_length(img, 50, 50, 50, 50)
+        
+        # 只裁剪上边和左边
+        cropped = crop_image_by_border_length(img, 100, 0, 100, 0)
+    """
+    print("✂️ 按边框长度裁剪图像...")
+    
+    # 1. 处理输入：支持文件路径或图像数据
+    if isinstance(image, str):
+        # 输入是文件路径
+        print(f"📁 读取图像: {image}")
+        img = cv2.imread(image)
+        if img is None:
+            print(f"❌ 无法读取图像: {image}")
+            return None
+    elif isinstance(image, np.ndarray):
+        # 输入已经是图像数据
+        img = image.copy()  # 创建副本以避免修改原始图像
+        print("✅ 使用提供的图像数据")
+    else:
+        print(f"❌ 不支持的输入类型: {type(image)}")
+        return None
+    
+    # 2. 获取图像尺寸
+    original_height, original_width = img.shape[:2]
+    print(f"📐 原始图像尺寸: {original_width}x{original_height}")
+    
+    # 3. 验证和转换参数
+    # 确保参数是非负整数
+    try:
+        top_len = int(top_len)
+        bottom_len = int(bottom_len)
+        left_len = int(left_len)
+        right_len = int(right_len)
+    except (ValueError, TypeError):
+        print("❌ 裁剪长度必须是数字")
+        return None
+    
+    # 确保非负
+    if any(length < 0 for length in [top_len, bottom_len, left_len, right_len]):
+        print("❌ 裁剪长度不能为负数")
+        return None
+    
+    print(f"📏 裁剪长度设置:")
+    print(f"  上边: {top_len}像素")
+    print(f"  下边: {bottom_len}像素")
+    print(f"  左边: {left_len}像素")
+    print(f"  右边: {right_len}像素")
+    
+    # 4. 计算裁剪区域
+    new_top = top_len
+    new_bottom = original_height - bottom_len
+    new_left = left_len
+    new_right = original_width - right_len
+    
+    print(f"🔍 计算裁剪区域:")
+    print(f"  原始范围: y=[0:{original_height}], x=[0:{original_width}]")
+    print(f"  新范围: y=[{new_top}:{new_bottom}], x=[{new_left}:{new_right}]")
+    
+    # 5. 验证裁剪区域有效性
+    if new_top >= new_bottom:
+        print(f"❌ 垂直裁剪过多: {top_len}+{bottom_len} >= {original_height}")
+        print(f"   剩余高度: {new_bottom - new_top} (应为正数)")
+        return None
+    
+    if new_left >= new_right:
+        print(f"❌ 水平裁剪过多: {left_len}+{right_len} >= {original_width}")
+        print(f"   剩余宽度: {new_right - new_left} (应为正数)")
+        return None
+    
+    # 6. 计算新尺寸
+    new_height = new_bottom - new_top
+    new_width = new_right - new_left
+    
+    print(f"📏 裁剪后尺寸: {new_width}x{new_height}")
+    print(f"📊 占原图比例: {new_width/original_width:.1%} x {new_height/original_height:.1%}")
+    
+    # 7. 显示裁剪信息
+    total_cropped_h = top_len + bottom_len
+    total_cropped_w = left_len + right_len
+    print(f"📊 总计裁剪:")
+    print(f"  垂直裁剪: {total_cropped_h}像素 ({total_cropped_h/original_height:.1%})")
+    print(f"  水平裁剪: {total_cropped_w}像素 ({total_cropped_w/original_width:.1%})")
+    
+    # 8. 执行裁剪
+    try:
+        # 使用numpy数组切片：img[y_start:y_end, x_start:x_end]
+        cropped = img[new_top:new_bottom, new_left:new_right]
+        
+        print(f"✅ 裁剪成功: {cropped.shape[1]}x{cropped.shape[0]}")
+        
+        return cropped
+        
+    except Exception as e:
+        print(f"❌ 裁剪失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def crop_with_auto_adjustment(image, top_len, bottom_len, left_len, right_len, min_size=50):
+    """
+    自动调整裁剪版本：确保最小尺寸
+    """
+    print("🔄 自动调整裁剪...")
+    
+    if isinstance(image, str):
+        img = cv2.imread(image)
+    elif isinstance(image, np.ndarray):
+        img = image.copy()
+    else:
+        return None
+    
+    if img is None:
+        return None
+    
+    original_height, original_width = img.shape[:2]
+    
+    # 自动调整裁剪长度
+    adjusted_top = min(top_len, original_height - min_size)
+    adjusted_bottom = min(bottom_len, original_height - min_size - adjusted_top)
+    adjusted_left = min(left_len, original_width - min_size)
+    adjusted_right = min(right_len, original_width - min_size - adjusted_left)
+    
+    print(f"🔧 自动调整:")
+    print(f"  上边: {top_len} -> {adjusted_top}")
+    print(f"  下边: {bottom_len} -> {adjusted_bottom}")
+    print(f"  左边: {left_len} -> {adjusted_left}")
+    print(f"  右边: {right_len} -> {adjusted_right}")
+    
+    # 调用基础函数
+    return crop_image_by_border_length(img, adjusted_top, adjusted_bottom, adjusted_left, adjusted_right)
+
+def crop_and_show_comparison(image, top_len, bottom_len, left_len, right_len):
+    """
+    裁剪并显示对比
+    """
+    import matplotlib.pyplot as plt
+    
+    # 读取或复制图像
+    if isinstance(image, str):
+        original = cv2.imread(image)
+        original_rgb = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
+    elif isinstance(image, np.ndarray):
+        original = image.copy()
+        if len(original.shape) == 3 and original.shape[2] == 3:
+            original_rgb = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
+        else:
+            original_rgb = original
+    else:
+        return None
+    
+    # 裁剪
+    cropped = crop_image_by_border_length(image, top_len, bottom_len, left_len, right_len)
+    
+    if cropped is None:
+        return None
+    
+    # 转换颜色用于显示
+    if len(cropped.shape) == 3 and cropped.shape[2] == 3:
+        cropped_rgb = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
+    else:
+        cropped_rgb = cropped
+    
+    # 创建对比图
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    
+    # 原始图像
+    axes[0].imshow(original_rgb)
+    axes[0].set_title(f'原始图像\n{original_rgb.shape[1]}x{original_rgb.shape[0]}')
+    axes[0].axis('off')
+    
+    # 裁剪标记图
+    marked = original_rgb.copy()
+    h, w = original_rgb.shape[:2]
+    
+    # 绘制裁剪线
+    cv2.line(marked, (left_len, 0), (left_len, h), (255, 0, 0), 2)
+    cv2.line(marked, (w - right_len, 0), (w - right_len, h), (255, 0, 0), 2)
+    cv2.line(marked, (0, top_len), (w, top_len), (0, 255, 0), 2)
+    cv2.line(marked, (0, h - bottom_len), (w, h - bottom_len), (0, 255, 0), 2)
+    
+    # 添加文字
+    cv2.putText(marked, f'Top: {top_len}', (10, 30), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(marked, f'Bottom: {bottom_len}', (10, h - 30), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(marked, f'Left: {left_len}', (10, h//2), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    cv2.putText(marked, f'Right: {right_len}', (w - 120, h//2), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    
+    axes[1].imshow(marked)
+    axes[1].set_title('裁剪标记\n蓝色:左右边界, 绿色:上下边界')
+    axes[1].axis('off')
+    
+    # 裁剪结果
+    axes[2].imshow(cropped_rgb)
+    axes[2].set_title(f'裁剪结果\n{cropped_rgb.shape[1]}x{cropped_rgb.shape[0]}')
+    axes[2].axis('off')
+    
+    plt.suptitle(f'图像裁剪对比 (上:{top_len},下:{bottom_len},左:{left_len},右:{right_len})', fontsize=14)
+    plt.tight_layout()
+    plt.show()
+    
+    return cropped
+
+def crop_multiple_sides_only(image, crop_dict):
+    """
+    仅裁剪指定的边
+    
+    参数:
+        image: 输入图像
+        crop_dict: 字典，指定要裁剪的边和长度
+                  例如: {'top': 50, 'left': 100}
+    """
+    print("🎯 选择性裁剪...")
+    
+    # 设置默认值
+    top_len = crop_dict.get('top', 0)
+    bottom_len = crop_dict.get('bottom', 0)
+    left_len = crop_dict.get('left', 0)
+    right_len = crop_dict.get('right', 0)
+    
+    print(f"📏 选择性裁剪设置:")
+    for side, length in crop_dict.items():
+        if length > 0:
+            print(f"  {side}: {length}像素")
+    
+    return crop_image_by_border_length(image, top_len, bottom_len, left_len, right_len)
+
+def batch_crop_images(image_list, top_len, bottom_len, left_len, right_len, output_dir="cropped"):
+    """
+    批量裁剪多张图像
+    """
+    print(f"📦 批量裁剪 {len(image_list)} 张图像...")
+    
+    # 创建输出目录
+    os.makedirs(output_dir, exist_ok=True)
+    
+    results = []
+    
+    for i, image_input in enumerate(image_list):
+        print(f"\n[{i+1}/{len(image_list)}] 处理图像...")
+        
+        # 裁剪
+        cropped = crop_image_by_border_length(image_input, top_len, bottom_len, left_len, right_len)
+        
+        if cropped is not None:
+            # 生成输出路径
+            if isinstance(image_input, str):
+                base_name = os.path.basename(image_input)
+                output_name = f"cropped_{base_name}"
+            else:
+                output_name = f"cropped_{i+1}.jpg"
+            
+            output_path = os.path.join(output_dir, output_name)
+            
+            # 保存
+            success = cv2.imwrite(output_path, cropped)
+            
+            if success:
+                print(f"✅ 保存: {output_path}")
+                results.append({
+                    'input': image_input,
+                    'output': output_path,
+                    'size': f"{cropped.shape[1]}x{cropped.shape[0]}"
+                })
+            else:
+                print(f"❌ 保存失败: {output_path}")
+        else:
+            print(f"❌ 裁剪失败")
+    
+    print(f"\n📊 批量裁剪完成:")
+    print(f"  成功: {len(results)}/{len(image_list)}")
+    
+    return results
+
+# 测试函数
+def test_crop_functions():
+    """测试裁剪函数"""
+    print("🧪 测试裁剪功能")
+    print("=" * 50)
+    
+    # 创建测试图像
+    test_img = np.zeros((400, 600, 3), dtype=np.uint8)
+    test_img[:] = [100, 150, 200]  # 淡蓝色背景
+    
+    # 添加网格和文字以便观察裁剪效果
+    for i in range(0, 600, 50):
+        cv2.line(test_img, (i, 0), (i, 400), (255, 255, 255), 1)
+        cv2.putText(test_img, str(i), (i, 20), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+    
+    for i in range(0, 400, 50):
+        cv2.line(test_img, (0, i), (600, i), (255, 255, 255), 1)
+        cv2.putText(test_img, str(i), (10, i), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+    
+    # 添加中心标记
+    cv2.putText(test_img, "CENTER", (250, 200), 
+               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+    
+    print("📊 测试用例:")
+    
+    # 测试1: 四边均匀裁剪
+    print("\n1. 四边均匀裁剪 (各50像素)")
+    result1 = crop_image_by_border_length(test_img, 50, 50, 50, 50)
+    if result1 is not None:
+        print(f"   结果尺寸: {result1.shape[1]}x{result1.shape[0]}")
+    
+    # 测试2: 只裁剪上下边
+    print("\n2. 只裁剪上下边 (各100像素)")
+    result2 = crop_image_by_border_length(test_img, 100, 100, 0, 0)
+    if result2 is not None:
+        print(f"   结果尺寸: {result2.shape[1]}x{result2.shape[0]}")
+    
+    # 测试3: 只裁剪左右边
+    print("\n3. 只裁剪左右边 (各150像素)")
+    result3 = crop_image_by_border_length(test_img, 0, 0, 150, 150)
+    if result3 is not None:
+        print(f"   结果尺寸: {result3.shape[1]}x{result3.shape[0]}")
+    
+    # 测试4: 不对称裁剪
+    print("\n4. 不对称裁剪 (上:30,下:70,左:50,右:100)")
+    result4 = crop_image_by_border_length(test_img, 30, 70, 50, 100)
+    if result4 is not None:
+        print(f"   结果尺寸: {result4.shape[1]}x{result4.shape[0]}")
+    
+    # 测试5: 显示对比
+    print("\n5. 显示裁剪对比")
+    crop_and_show_comparison(test_img, 50, 50, 50, 50)
+    
+    print("\n✅ 测试完成")
+
+# 使用示例
+# def main():
+#     """主函数示例"""
+#     print("🎨 图像裁剪工具")
+#     print("=" * 50)
+    
+#     # 方式1: 直接使用图像数据
+#     print("\n方式1: 使用图像数据")
+#     # 创建一个测试图像
+#     test_image = np.zeros((300, 400, 3), dtype=np.uint8)
+#     test_image[100:200, 150:250] = [0, 0, 255]  # 红色矩形
+    
+#     result = crop_image_by_border_length(test_image, 50, 50, 100, 100)
+    
+#     # 方式2: 使用文件路径
+#     print("\n方式2: 使用文件路径")
+#     image_path = "example.jpg"  # 替换为你的图像路径
+#     if os.path.exists(image_path):
+#         result = crop_image_by_border_length(image_path, 20, 20, 30, 30)
+    
+#     # 方式3: 选择性裁剪
+#     print("\n方式3: 选择性裁剪")
+#     crop_dict = {'top': 50, 'left': 100}  # 只裁剪上边和左边
+#     result = crop_multiple_sides_only(test_image, crop_dict)
+    
+#     # 方式4: 显示对比
+#     print("\n方式4: 显示裁剪对比")
+#     result = crop_and_show_comparison(test_image, 30, 70, 50, 100)
+
+# # 快速使用示例
+# if __name__ == "__main__":
+#     print("选择测试模式:")
+#     print("1. 运行完整测试")
+#     print("2. 简单示例")
+    
+#     choice = input("请选择 (1/2): ").strip()
+    
+#     if choice == '1':
+#         test_crop_functions()
+#     elif choice == '2':
+#         # 简单示例
+#         print("\n简单示例:")
+#         print("-" * 30)
+        
+#         # 创建示例图像
+#         img = np.zeros((200, 300, 3), dtype=np.uint8)
+#         img[:] = [180, 180, 180]  # 灰色背景
+        
+#         # 裁剪示例
+#         cropped = crop_image_by_border_length(img, 20, 30, 40, 50)
+        
+#         if cropped is not None:
+#             print(f"\n原始尺寸: 300x200")
+#             print(f"裁剪参数: 上20,下30,左40,右50")
+#             print(f"裁剪后: {cropped.shape[1]}x{cropped.shape[0]}")
+#     else:
+#         print("❌ 无效选择")    
 
 # 主要程序
 if __name__ == "__main__":
-    scroll_path = "Source/scroll_horizontal_green_black.png"    # 你的卷轴模板
+    scroll_path = "Frames/scroll_vertical_brown_black.png"    # 你的卷轴模板
     scroll_output_path = "scroll_template_coordinates.png"
-    calligraphy_path = "Source/calligraphy_work_torn_edge.png"  # 你的书法作品
-    output_path = "calligraphy_in_scroll_final.png"
-    
+    embedded_img_path =  "Images/horse_transparent.png"     # "banner_vertical_transparent.png"  # 你的书法作品
+    output_path = "calligraphy_in_scroll_vertical_transparent.png"
+    output_path_2 = "calligraphy_in_scroll_vertical_transparent_2.png"
     print("=" * 60)
     print("卷轴模板创建工具 - 坐标版本")
     print("=" * 60)
@@ -563,7 +1064,7 @@ if __name__ == "__main__":
     print("      第一次点击: 内部区域左上角")
     print("      第二次点击: 内部区域右下角")
     
-    coords = None   #interactive_coordinate_selector(scroll_path)
+    coords = None   # interactive_coordinate_selector(scroll_path)
     
     if coords is not None:
         inner_top, inner_bottom, inner_left, inner_right = coords
@@ -577,7 +1078,8 @@ if __name__ == "__main__":
             scroll_path,
             scroll_output_path,
             inner_top, inner_bottom, inner_left, inner_right,
-            transparency_level=128  # 50%透明度
+            transparency_level=32,  # 128: 50%透明度; 64:25%
+            bg_color=None
         )
 
         
@@ -588,10 +1090,11 @@ if __name__ == "__main__":
         # 方法2: 使用预设坐标（需要你提供）
         # 根据你的测量，请提供这4个值：
         
-        inner_top = 756    # 内部区域上边界Y坐标
-        inner_bottom = 1824 # 内部区域下边界Y坐标  
-        inner_left = 480   # 内部区域左边界X坐标
-        inner_right = 3062  # 内部区域右边界X坐标
+        inner_top = 482    # 内部区域上边界Y坐标
+        inner_bottom = 3045 # 内部区域下边界Y坐标  
+        inner_left = 589   # 内部区域左边界X坐标
+        inner_right = 1880  # 内部区域右边界X坐标
+        # 坐标范围: y=482~3040, x=589~1872
         
         # 示例：假设内部区域大致在图像中央
         # height, width = cv2.imread(scroll_path).shape[:2]
@@ -610,22 +1113,34 @@ if __name__ == "__main__":
         # print(f"   尺寸: {inner_right-inner_left}x{inner_bottom-inner_top}")
         
         # 创建模板
-        template, alpha = create_scroll_template_correct_coords(
-            scroll_path,
-            scroll_output_path,
-            inner_top, inner_bottom, inner_left, inner_right,
-            transparency_level=128
-        )
+        # 创建透明模板
+        # template, alpha = create_scroll_template_correct_coords(
+        #     scroll_path,
+        #     scroll_output_path,
+        #     inner_top, inner_bottom, inner_left, inner_right,
+        #     transparency_level=16, bg_color=None
+        # )
+        # 创建单一颜色模板
+        # template, alpha = create_scroll_template_correct_coords(
+        #     scroll_path,
+        #     scroll_output_path,
+        #     inner_top, inner_bottom, inner_left, inner_right,
+        #     transparency_level=255,
+        #     bg_color=(0,255,255,0)
+        # )
+
+    # sys.exit(0)
 
     # 融合书法和卷轴
     result = embed_calligraphy_in_scroll(
         scroll_output_path,
-        calligraphy_path,
+        embedded_img_path,
         output_path,
         inner_top, inner_bottom, inner_left, inner_right,
-        calligraphy_opacity=0.5,  # 书法完全显示
+        scroll_area_trans_level=64,
+        calligraphy_opacity=0.65,  # 书法完全显示
         blend_mode='normal',      # 正常混合
-        calligraphy_margin=30,    # 书法边距30像素
+        calligraphy_margin=1,    # 书法边距30像素
         debug=True               # 显示调试信息
     )
     
@@ -636,6 +1151,7 @@ if __name__ == "__main__":
         # 显示最终结果
         plt.figure(figsize=(12, 8))
         plt.imshow(cv2.cvtColor(result, cv2.COLOR_BGRA2RGBA))
+        cv2.imwrite(output_path_2, cv2.cvtColor(result, cv2.COLOR_BGRA2RGBA))
         plt.title('书法卷轴融合作品', fontsize=16)
         plt.axis('off')
         plt.tight_layout()

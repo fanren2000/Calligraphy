@@ -294,7 +294,7 @@ def process_horizontal_scroll_template(template_path, output_path=None, debug=Fa
 # 使用示例
 if __name__ == "__main__":
     # 方法1：通用处理
-    template_path = "Source/scroll_horizontal_green_black.png"
+    template_path = "Frames/scroll_horizontal_green_black.png"
     output_path = "scroll_transparent.png"
     
     transparent_template, mask = create_transparent_template_for_scroll_with_background(

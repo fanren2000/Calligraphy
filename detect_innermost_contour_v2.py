@@ -152,7 +152,7 @@ def show_debug_info(original, mask, result):
     plt.show()
 
 # 使用修复版函数
-scroll_template_path = "Source/scroll_horizontal_green_black.png"
+scroll_template_path = "Frames/scroll_horizontal_green_black.png"
 output_template_path = "transparent_template_v2.png"
 transparent_template, mask = find_inner_region_and_make_transparent_fixed(
     scroll_template_path,

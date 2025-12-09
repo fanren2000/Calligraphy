@@ -13,6 +13,7 @@ from Calli_Utils import add_vertical_upper_inscription, add_vertical_lower_inscr
 from Calli_Utils import add_ink_bleed_effect, add_ink_bleed_effect_enhanced, add_ink_bleed_effect_optimized
 from Calli_Utils import get_lishu_vertical_spacing
 from Calli_Utils import add_formal_seal, add_note_seal
+from Calli_Utils import PaperType
 
 # 在您的代码中使用
 main_font = ImageFont.truetype("ShanHaiBoYaGuLiW-2.ttf", 240)
@@ -172,12 +173,65 @@ def test_smart_spacings():
     
     return spacings1, spacings2
 
-
-def create_vertically_centered_banner(text_chars, position_shift=None):
-    """修正垂直居中的横幅"""
-    tear_intensity = 0.15       # 0.35, 0.40, 0.45
+def hex_to_rgba(hex_color, alpha=0):
+    """将十六进制颜色转换为RGBA"""
+    hex_color = hex_color.lstrip('#')
     
-    paper = create_authentic_torn_paper("v_wide_handscroll", "xuan", tear_intensity)
+    if len(hex_color) == 6:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+    elif len(hex_color) == 3:
+        r = int(hex_color[0]*2, 16)
+        g = int(hex_color[1]*2, 16)
+        b = int(hex_color[2]*2, 16)
+    else:
+        r, g, b = 0, 0, 0
+    
+    return (r, g, b, alpha)
+
+def create_flat_edge_effect(
+        background_color="#f9f3e9",  # 默认米黄色
+        size=(600, 800),
+        border_width = 2,
+        border_color = (180, 160, 140)):
+    
+    """应用平边效果（添加整齐边框）"""
+    width, height = size
+
+    image = Image.new('RGB', (width, height), background_color)
+    
+    # 创建一个新图像，添加边框
+    # border_width = 15
+    new_width = width + border_width * 2
+    new_height = height + border_width * 2
+    
+    
+    new_image = Image.new('RGBA', (new_width, new_height), hex_to_rgba(background_color, 255))
+    
+    
+    # 将原图粘贴到中心
+    new_image.paste(image, (border_width, border_width))
+    
+    # 添加内边框线
+    draw = ImageDraw.Draw(new_image)
+    draw.rectangle([border_width - 2, border_width - 2, 
+                   new_width - border_width + 1, new_height - border_width + 1],
+                  outline=border_color, width=border_width)
+    
+    return new_image
+
+def create_vertically_centered_banner(text_chars, paper_size, paper_type: PaperType, position_shift=None):
+    """修正垂直居中的横幅"""
+    if paper_type == PaperType.TORN:
+        tear_intensity = 0.15       # 0.35, 0.40, 0.45
+    
+        paper = create_authentic_torn_paper("v_wide_handscroll", "xuan", tear_intensity)
+    elif paper_type == PaperType.FLAT:
+        paper = create_flat_edge_effect("#f9f3e9", paper_size)
+    elif paper_type == PaperType.TRANSPARENT:
+        paper = Image.new('RGBA', paper_size, (0, 0, 0, 0))
+
     # paper = paper.resize(paper_size)
     draw = ImageDraw.Draw(paper)
     
@@ -199,11 +253,18 @@ def create_vertically_centered_banner(text_chars, position_shift=None):
     total_chars = len(text_chars)
     # 计算隶属的字间距
     # 笔画数据库（简化版）
+    # stroke_data = {
+    #     "一": {"strokes": 1, "structure": "simple", "density": "sparse"},
+    #     "马": {"strokes": 3, "structure": "complex", "density": "medium"},
+    #     "当": {"strokes": 6, "structure": "balanced", "density": "dense"},
+    #     "先": {"strokes": 6, "structure": "balanced", "density": "dense"}
+    # }
+
     stroke_data = {
-        "一": {"strokes": 1, "structure": "simple", "density": "sparse"},
-        "马": {"strokes": 3, "structure": "complex", "density": "medium"},
-        "当": {"strokes": 6, "structure": "balanced", "density": "dense"},
-        "先": {"strokes": 6, "structure": "balanced", "density": "dense"}
+        "旗": {"strokes": 13, "structure": "complex", "density": "sparse"},
+        "开": {"strokes": 4, "structure": "simple", "density": "dense"},
+        "得": {"strokes": 11, "structure": "balanced", "density": "dense"},
+        "胜": {"strokes": 9, "structure": "balanced", "density": "dense"}
     }
     
     temp_img = Image.new('RGBA', (1, 1), (0, 0, 0, 0))
@@ -305,7 +366,7 @@ def create_complete_banner(text, layout="traditional",
     # 创建基础横幅
     if layout == "traditional":
         position_shift_str = "R20"
-        banner = create_vertically_centered_banner(text_chars, position_shift_str)
+        banner = create_vertically_centered_banner(text_chars, paper_size, PaperType.TRANSPARENT, position_shift_str)
         print("🎋 传统布局: 竖排主体 + 竖排落款")
     else:
         # banner = create_modern_banner(text_chars, paper_size)
@@ -328,7 +389,7 @@ def create_complete_banner(text, layout="traditional",
     banner = add_special_lower_inscription(
         banner, 
         author_name, 
-        "叹舞者冲天一字马",
+        "祝嘉年华地区赛问鼎",  # "叹舞者冲天一字马",
         include_date,
         layout=layout,
         bottom_margin = lower_inscription_bottom_margin
@@ -342,10 +403,10 @@ def create_complete_banner(text, layout="traditional",
         print(f"🎨 添加墨迹渗透效果，强度: {ink_intensity}")
 
 
-    banner = add_formal_seal(banner, author_name, (60, 600), 100, 0.85)   
+    banner = add_formal_seal(banner, author_name, (60, 60), 100, 0.85)   
 
 
-    # banner = add_note_seal(banner, "耗气长存", (width - 150, height - 160), 100)  # 耗气长存
+    banner = add_note_seal(banner, "耗气长存", (width - 150, height - 160), 100)  # 耗气长存
     
     return banner
 # ==================== 预设配置 ====================
@@ -458,20 +519,36 @@ def quick_start_example():
     # )
     # effect_banner.save("banner_with_effects.png")
     # print("   创建: banner_with_effects.png")
+
+    PAPER_SIZES = {
+        "small_xuan": (400, 600),  # 减小尺寸便于测试
+        "medium_xuan": (600, 800),
+        "large_xuan": (1600, 800),
+        "handscroll": (800, 200),
+        "tall_handscroll": (1500, 500),
+        "wide_handscroll": (1600, 400),
+        "album_leaf": (400, 500),
+        "v_handscroll": (500, 1500),
+        "v_wide_handscroll": (500, 1000),
+        "v_tall_handscroll": (400, 1600)
+    }
+    
+    width, height = PAPER_SIZES.get("v_wide_handscroll", (400, 600))
     
     # 完整用法的用法
     print("\n💎 完整用法:")
     complete_banner = create_complete_banner(
-        "一马当先",      # "一马当先", "气势如肱", "一馬當先"
+        "旗开得胜",      # "一马当先", "气势如肱", "一馬當先"
         layout="traditional",
+        paper_size=(width, height),
         add_upper=True, 
         recipient_info={"name": "认真儿", "honorific": "主播", "humble_word": "惠存"},      # 雅正
-        add_ink_bleed=True,
+        add_ink_bleed=False,
         ink_intensity=0.3,
         author_name="玻璃耗子"
     )
-    complete_banner.save("banner_vertical_complete.png")
-    print("   创建: banner_vertical_complete.png")
+    complete_banner.save("banner_vertical_transparent.png")
+    print("   创建: banner_vertical_transparent.png")
 
 # ==================== 主函数 ====================
 

@@ -2150,8 +2150,8 @@ def visualize_colors(colors_bgr, label_counts, image_shape):
 
 # 使用示例
 if __name__ == "__main__":
-    scroll_image_template = "Source/scroll_horizontal_green_black.png"
-    calligraphy_image = "Source/calligraphy_work_torn_edge.png"
+    scroll_image_template = "Frames/scroll_horizontal_green_black.png"
+    calligraphy_image = "Frames/calligraphy_work_torn_edge.png"
 
     # 测试撕边书法检测
     # bg_color, confidence = detect_torn_edge_background_improved(

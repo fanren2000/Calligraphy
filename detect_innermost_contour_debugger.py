@@ -181,4 +181,4 @@ class ScrollBorderDebugger:
             print("❌ 未检测到明显边界")
 
 # 运行调试器
-debugger = ScrollBorderDebugger("Source/scroll_horizontal_green_black.png")
+debugger = ScrollBorderDebugger("Frames/scroll_horizontal_green_black.png")

@@ -25,6 +25,7 @@ from .seal_texture_type import add_texture_and_aging
 from .text_inscription_type import add_upper_inscription, add_vertical_upper_inscription, add_vertical_lower_inscription, add_special_lower_inscription
 from .char_type_lishu import get_lishu_spacing, get_lishu_vertical_spacing
 from .seal_border_oval import add_leisure_oval_seal
+from .paper_type import PaperType
 
 __all__ = [
     'add_seal_with_border',
